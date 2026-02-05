@@ -1,5 +1,5 @@
 // --- 修改：版本號 (每次有重大修改，建議改這裡，例如 v2, v3) ---
-const CACHE_NAME = 'kyushu-trip-v2';
+const CACHE_NAME = 'tokyo-trip-v2';
 
 const ASSETS_TO_CACHE = [
   './',
