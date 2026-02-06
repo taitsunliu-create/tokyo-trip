@@ -6413,21 +6413,18 @@
         let conversationHistory = [];
         // [新增] AI 導遊的系統提示詞 (這裡定義了它的記憶與人設)
         const systemPrompt = `
-    你是一位專業的九州旅遊導遊，負責帶領「親子自由行」團隊。
-    目前的日期是 2026年1月 (請根據使用者提問判斷相對日期)。
+    你是一位專業的日本東京旅遊導遊，負責帶領三姊妹的放鬆、拍照逛街。
+    目前的日期是 2026年4月 (請根據使用者提問判斷相對日期)。
     
     【行程總覽】
-    Day 1 (1/25 日): 搭乘星宇航空JX846(07:30出發) 抵達熊本機場(預計12:00) -> 熊本城/櫻之馬場 -> 晚餐:勝烈亭豬排 -> 住: The Blossom Kumamoto。
-    Day 2 (1/26 一): 熊本站搭 Aso Boy! (09:00) -> 租車(Toyota)-> 阿蘇站/草千里/火山博物館 -> 開車往黑川溫泉 -> 住: 黑川溫泉 (入湯手形)。
-    Day 3 (1/27 二): 九州自然野生動物園 (叢林巴士) -> 別府地獄巡禮 (海地獄/灶地獄) -> 住: 由布院 (金鱗湖旁)。
-    Day 4 (1/28 三): 由布院散策 (湯之坪/Snoopy茶屋) -> 太宰府天滿宮 -> TeamLab Forest 福岡 -> 住: 福岡市區。
-    Day 5 (1/29 四): 大濠公園/美術館 -> 天神地下街/PARCO (午餐:極味屋) -> 博多運河城 -> 中洲屋台 -> 住: 福岡市區。
-    Day 6 (1/30 五): 整理行李 -> 福岡機場還車 (10:30) -> 搭機返台 (JX847 19:10)。
-
+    Day 1 (4/18 六): 搭乘台灣虎航IT216(00:10出發)的紅眼班機 抵達羽田機場(預計04:25) -> 熊本城/櫻之馬場 -> 晚餐:勝烈亭豬排 -> 住: The Blossom Kumamoto。
+    Day 2 (4/19 日): 熊本站搭 Aso Boy! (09:00) -> 租車(Toyota)-> 阿蘇站/草千里/火山博物館 -> 開車往黑川溫泉 -> 住: 黑川溫泉 (入湯手形)。
+    Day 3 (4/20 一): 整理行李 -> 銀座搭機返台 (JX847 19:10)。
+    
     【回答原則】
     1. 簡潔：你是在手機上被閱讀，回答請精簡，不要長篇大論。
     2. 親切：語氣要像朋友一樣熱心。
-    3. 準確：只能根據上述行程回答，不要編造不在行程內的景點。
+    3. 準確：只能根據上述行程回答，不要編造不在行程活動範圍內的景點。
     4. 語言：請使用繁體中文 (台灣)。
     5. 導航支援：若使用者詢問地點位置或如何前往，請務必在回答中附上 Google Maps 連結，格式請嚴格遵守：
        <br><a href='https://www.google.com/maps/search/?api=1&query=地點名稱' target='_blank' style='display:inline-flex; align-items:center; gap:4px; margin-top:5px; color:#2563EB; font-weight:bold; text-decoration:none; border:1px solid #2563EB; padding:2px 8px; border-radius:12px;'><svg style='width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;' viewBox='0 0 24 24'><use href='#icon-loc'></use></svg>導航至 [地點]</a>
@@ -6531,40 +6528,22 @@
 
         const tripConfig = {
             'd1': {
-                dateStr: '2026-01-25', // 務必確認年份日期正確
-                loc: '熊本市',
-                lat: 32.803, lon: 130.707,
-                backup: { temp: '10°C', range: '2°C ~ 11°C', desc: '晴時多雲', advice: '氣溫適中但早晚偏涼，長袖配外套。', icon: 'cloud-sun' }
+                dateStr: '2026-04-18',
+                loc: '東京',
+                lat: 35.6895, lon: 139.6917, // 東京市區
+                backup: { temp: '18°C', range: '12°C ~ 20°C', desc: '晴時多雲', advice: '春季氣候宜人，早晚微涼。', icon: 'cloud-sun' }
             },
             'd2': {
-                dateStr: '2026-01-26',
-                loc: '阿蘇/黑川',
-                lat: 33.096, lon: 131.096, // 黑川溫泉附近座標
-                backup: { temp: '5°C', range: '-3°C ~ 6°C', desc: '多雲/飄雪', advice: '山區極冷，務必穿著羽絨外套保暖。', icon: 'snow' }
+                dateStr: '2026-04-19',
+                loc: '澀谷',
+                lat: 35.6580, lon: 139.7016, // 澀谷區
+                backup: { temp: '19°C', range: '14°C ~ 22°C', desc: '多雲', advice: '逛街行程建議穿著舒適好走的鞋子。', icon: 'cloud' }
             },
             'd3': {
-                dateStr: '2026-01-27',
-                loc: '別府/由布院',
-                lat: 33.265, lon: 131.360, // 由布院座標
-                backup: { temp: '7°C', range: '0°C ~ 8°C', desc: '多雲', advice: '濕度較高體感寒冷，請穿防滑鞋。', icon: 'cloud' }
-            },
-            'd4': {
-                dateStr: '2026-01-28',
-                loc: '福岡市',
-                lat: 33.590, lon: 130.401,
-                backup: { temp: '9°C', range: '4°C ~ 10°C', desc: '陰天', advice: '市區風大，建議穿著防風外套。', icon: 'cloud' }
-            },
-            'd5': {
-                dateStr: '2026-01-29',
-                loc: '福岡市',
-                lat: 33.590, lon: 130.401,
-                backup: { temp: '10°C', range: '3°C ~ 11°C', desc: '晴朗', advice: '早晚溫差大，洋蔥式穿法最佳。', icon: 'sun' }
-            },
-            'd6': {
-                dateStr: '2026-01-30',
-                loc: '福岡市',
-                lat: 33.590, lon: 130.401,
-                backup: { temp: '9°C', range: '4°C ~ 10°C', desc: '多雲時晴', advice: '室內暖氣強，內搭不宜過厚。', icon: 'cloud-sun' }
+                dateStr: '2026-04-20',
+                loc: '銀座',
+                lat: 35.6712, lon: 139.7665, // 中央區銀座
+                backup: { temp: '20°C', range: '15°C ~ 23°C', desc: '晴朗', advice: '天氣溫暖，適合戶外購物行程。', icon: 'sun' }
             }
         };
 
@@ -8171,7 +8150,7 @@
                 const txtCam = `<span style="${spanStyle} color:#D946EF;">${iconCam}拍照辨識</span>`;
 
                 const welcomeHtml = `
-                    你好！我是你的九州旅遊 AI 助手。
+                    你好！我是你的東京旅遊 AI 助手。
                     <br><br>
                     你可以點選下方的 ${txtConsult} 詢問路線，或使用 ${txtTrans} 與當地人溝通。
                     點選 ${txtVoice} 搭配語言切換還能用說的喔！
@@ -8992,12 +8971,9 @@
 
             // 1. 定義日期與行程 ID 的對應表
             const scheduleMap = {
-                '2026-01-25': 'd1',
-                '2026-01-26': 'd2',
-                '2026-01-27': 'd3',
-                '2026-01-28': 'd4',
-                '2026-01-29': 'd5',
-                '2026-01-30': 'd6'
+                '2026-04-18': 'd1',
+                '2026-04-19': 'd2',
+                '2026-04-20': 'd3'
             };
 
             // 2. 取得今日日期 (格式 YYYY-MM-DD)
@@ -9015,8 +8991,8 @@
             const checklistIcon = document.querySelector('.checklist-card-header .toggle-icon');
 
             // 4. 執行判斷
-            if (todayStr < '2026-01-25') {
-                // 【情境 A：行前準備期】(現在 ~ 1/24)
+            if (todayStr < '2026-04-18') {
+                // 【情境 A：行前準備期】(現在 ~ 4/17)
                 // 動作：自動展開 Checklist，收合所有行程
 
                 if (checklistContainer) {
