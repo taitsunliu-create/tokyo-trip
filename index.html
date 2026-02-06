@@ -10397,6 +10397,44 @@
             formatCompactDate(el);
 
             // 聚焦時切換回原生 Date Picker
+            // ==========================================
+            // [新增] 全域讀取畫面控制 (動態生成)
+            // ==========================================
+            function showGlobalLoading(text = "處理中...") {
+                let overlay = document.getElementById('global-loading-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'global-loading-overlay';
+                    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; font-size:1.2rem; backdrop-filter:blur(3px);";
+                    overlay.innerHTML = `
+                    <div class="spinner" style="width:50px; height:50px; border:4px solid rgba(255,255,255,0.3); border-top:4px solid white; border-radius:50%; animation:spin 1s linear infinite; margin-bottom:15px;"></div>
+                    <div id="global-loading-text">${text}</div>
+                    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+                `;
+                    document.body.appendChild(overlay);
+                } else {
+                    const textEl = document.getElementById('global-loading-text');
+                    if (textEl) textEl.innerText = text;
+                    overlay.style.display = 'flex';
+                }
+            }
+
+            function hideGlobalLoading() {
+                const overlay = document.getElementById('global-loading-overlay');
+                if (overlay) {
+                    overlay.style.display = 'none';
+                }
+            }
+
+            // ==========================================
+            // [新增] 應用程式初始化檢查
+            // ==========================================
+            document.addEventListener('DOMContentLoaded', () => {
+                // 隱藏可能存在的舊版 loading 畫面
+                const oldLoading = document.getElementById('loading-overlay') || document.querySelector('.loading-mask');
+                if (oldLoading) oldLoading.style.display = 'none';
+            });
+
             el.addEventListener('focus', function () {
                 this.type = 'date';
 
