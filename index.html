@@ -4131,7 +4131,7 @@
                     <div class="activity">飯店 Check-in & 下午茶</div>
                     <div class="desc">
                         回到飯店辦理入住。房間最有名的就是「窗外的東京鐵塔」。<br>
-                        利用自然光在窗邊瘋狂拍照。這段時間是媽媽們最珍貴的放空時光。
+                        利用自然光在窗邊瘋狂拍照。這段時間是最珍貴的放空時光。
                     </div>
                     <div class="tags"><span class="tag tag-stay">飯店</span><span class="tag tag-relax">放空</span></div>
                 </div>
@@ -4216,7 +4216,7 @@
             <div class="day-toggle" id="toggle-d3" onclick="toggleTimeline('d3', this)">
                 <div class="day-info">
                     <h3>Day 3: 最後衝刺，銀座購物</h3>
-                    <span>4/20 (一) • 回程: 22:35 TPE</span>
+                    <span>4/20 (一) • 溫暖的家</span>
                 </div>
                 <div class="toggle-icon">▼</div>
             </div>
@@ -12222,7 +12222,56 @@
         document.addEventListener('DOMContentLoaded', () => {
             initCompactDateInput('ledger-date');
             initCompactDateInput('ledger-note-date');
+
+            // [新增] 自動展開行程
+            autoExpandItinerary();
         });
+
+        // [新增] 自動展開行程邏輯
+        function autoExpandItinerary() {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            const d = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${y}-${m}-${d}`;
+
+            console.log("Auto Expand Check:", todayStr);
+
+            // 1. 行程前 (< 04/18) -> 展開 Check List
+            if (todayStr < "2026-04-18") {
+                const clContainer = document.getElementById('checklist-container');
+                if (clContainer) {
+                    // 直接操作 class 與 style，模擬打開狀態
+                    clContainer.style.display = 'block';
+                    // 若有 CSS transition class (如 show)，也可加上:
+                    clContainer.classList.add('show');
+
+                    const clHeader = document.querySelector('.checklist-card-header');
+                    if (clHeader) {
+                        const icon = clHeader.querySelector('.toggle-icon');
+                        if (icon) {
+                            icon.style.transform = 'rotate(180deg)';
+                            icon.style.color = 'var(--primary)';
+                        }
+                    }
+                }
+            }
+            // 2. Day 1 (04/18)
+            else if (todayStr === "2026-04-18") {
+                const t1 = document.getElementById('toggle-d1');
+                if (t1) toggleTimeline('d1', t1);
+            }
+            // 3. Day 2 (04/19)
+            else if (todayStr === "2026-04-19") {
+                const t2 = document.getElementById('toggle-d2');
+                if (t2) toggleTimeline('d2', t2);
+            }
+            // 4. Day 3 (04/20)
+            else if (todayStr === "2026-04-20") {
+                const t3 = document.getElementById('toggle-d3');
+                if (t3) toggleTimeline('d3', t3);
+            }
+        }
 
     </script>
 </body>
