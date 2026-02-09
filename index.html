@@ -10471,8 +10471,17 @@
                         // [新增] 圖片處理邏輯
                         let imagesHtml = '';
                         let imagesData = [];
-                        if (item.image && typeof item.image === 'string') {
+
+                        // 兼容多種圖片格式來源
+                        if (Array.isArray(item.images) && item.images.length > 0) {
+                            // 來自 Optimistic Update 或新版資料結構
+                            imagesData = item.images;
+                        } else if (item.image && typeof item.image === 'string') {
+                            // 來自舊版 GAS 回傳 (字串以換行分隔)
                             imagesData = item.image.split('\n').filter(u => u.trim() !== '');
+                        } else if (Array.isArray(item.image)) {
+                            // 防呆
+                            imagesData = item.image;
                         }
 
 
