@@ -10027,6 +10027,7 @@
                             }
                             // [修正] 等到還原圖示後，才去檢查狀態 (這時 input 是空的，會變灰)
                             updateLedgerSubmitState();
+                            if (typeof updatePinButtonState === 'function') updatePinButtonState();
                         }, 1500);
                     } else {
                         alert(`✅ 儲存成功！`);
@@ -10358,8 +10359,23 @@
                         </div>`;
                     } else {
                         // 筆記模式
-                        const noteContent = item.content || item.item || '無內容';
+                        let noteContent = item.content || item.item || '無內容';
                         const currentUserName = localStorage.getItem('last_user_name');
+
+                        // [新增] 識別與顯示公告圖示
+                        const isAnnouncement = noteContent.includes('[公告]') || noteContent.includes('#公告');
+                        // 移除標記以便乾淨顯示
+                        noteContent = noteContent.replace(/\[公告\]|#公告/g, '').trim();
+
+                        let timeDisplay = timeStr;
+                        if (isAnnouncement) {
+                            // 在時間左邊加入紅色圖釘
+                            timeDisplay = `
+                             <svg width="14" height="14" viewBox="0 0 24 24" fill="#FEE2E2" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; transform:rotate(45deg);">
+                                <line x1="12" y1="17" x2="12" y2="22"></line>
+                                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+                             </svg> ${timeStr}`;
+                        }
 
                         // [新增] 圖片處理邏輯
                         let imagesHtml = '';
@@ -10419,7 +10435,7 @@
                                     <span style="font-size: 1.4rem;">${displayUser.avatar || '👤'}</span>
                                     <span style="font-size: 0.85rem; font-weight: 600; color:#374151;">${displayUser.name}</span>
                                 </div>
-                                <div style="font-size: 0.75rem; color: #9ca3af;">${timeStr}</div>
+                                <div style="font-size: 0.75rem; color: #9ca3af; display:flex; align-items:center;">${timeDisplay}</div>
                             </div>
                             <div style="font-size: 1rem; color: #374151; line-height: 1.6; white-space: pre-wrap;">${noteContent}</div>
                             ${imagesHtml}
@@ -10431,7 +10447,6 @@
                 html += `</div></div>`; // Close group div
             });
 
-            listContainer.innerHTML = html;
             listContainer.innerHTML = html;
             updateTotalDisplay(totalJPY, totalTWD);
 
@@ -11894,6 +11909,94 @@
                 const t3 = document.getElementById('toggle-d3');
                 if (t3) toggleTimeline('d3', t3);
             }
+        }
+
+        // [New] Announcement Logic
+        let isAnnouncementMode = false;
+
+        function toggleAnnouncementMode(btn) {
+            isAnnouncementMode = !isAnnouncementMode;
+            updatePinButtonState();
+
+            const noteInput = document.getElementById('ledger-note-content');
+            if (isAnnouncementMode) {
+                if (noteInput) noteInput.placeholder = "輸入公告內容...";
+            } else {
+                if (noteInput) noteInput.placeholder = "寫下旅程點滴...";
+            }
+        }
+
+        // [New] 更新圖釘按鈕狀態 (連動輸入框內容)
+        function updatePinButtonState() {
+            const btn = document.getElementById('btn-pin-note');
+            if (!btn) return;
+
+            const noteInput = document.getElementById('ledger-note-content');
+            const hasText = noteInput && noteInput.value.trim().length > 0;
+            const icon = btn.querySelector('svg');
+
+            if (isAnnouncementMode) {
+                if (hasText) {
+                    // 模式開啟且有文字 -> 亮紅色 (Filled)
+                    btn.style.color = '#EF4444';
+                    if (icon) icon.style.fill = '#FEE2E2';
+                } else {
+                    // 模式開啟但無文字 -> 淡紅色 (Outline) 表示模式啟用中
+                    btn.style.color = '#FCA5A5';
+                    if (icon) icon.style.fill = 'none';
+                }
+            } else {
+                // 模式關閉 -> 灰色
+                btn.style.color = '#9CA3AF';
+                if (icon) icon.style.fill = 'none';
+            }
+        }
+
+        // [New] 綁定輸入框監聽器
+        document.addEventListener('DOMContentLoaded', () => {
+            const noteInput = document.getElementById('ledger-note-content');
+            if (noteInput) {
+                noteInput.addEventListener('input', updatePinButtonState);
+            }
+        });
+
+        function renderAnnouncementMarquee(data) {
+            const container = document.getElementById('announcement-marquee');
+            const content = document.getElementById('marquee-content');
+            if (!container || !content) return;
+
+            // Filter for announcements (notes containing [公告] or #公告)
+            const announcements = data.filter(item =>
+                item.type === 'note' && (
+                    (item.content && (item.content.includes('[公告]') || item.content.includes('#公告'))) ||
+                    (item.item && (item.item.includes('[公告]') || item.item.includes('#公告')))
+                )
+            ).sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date));
+
+            if (announcements.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'flex';
+
+            // Build marquee text
+            const parts = announcements.map(item => {
+                let dateStr = '';
+                try {
+                    const d = new Date(item.timestamp || item.date);
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    dateStr = `[${mm}/${dd}]`;
+                } catch (e) { }
+
+                const rawText = item.content || item.item || '';
+                const cleanText = rawText.replace(/\[公告\]|#公告/g, '').trim();
+                return `<span style="font-weight:700; color:#B45309; margin-right:4px;">${dateStr}</span><span style="color:#92400E;">${cleanText}</span>`;
+            });
+
+            // Using a simple join with spacing
+            content.innerHTML = parts.join('<span style="margin: 0 20px; color:#FCD34D;">|</span>');
         }
 
     </script>
