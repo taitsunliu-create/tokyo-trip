@@ -10015,36 +10015,6 @@
                 const result = await resp.json();
 
                 if (result.status === 'success' || result.result === 'success') {
-                    // [Optimistic Update] 本地先更新，讓 UI 即時反應 (包含移除公告標記)
-                    if (window.rawLedgerData) {
-                        try {
-                            const newData = { ...payloadData };
-                            // 確保數值型別
-                            newData.amount = parseFloat(newData.amount) || 0;
-                            // 確保 user 格式一致
-                            newData.user = {
-                                name: payloadData.userName,
-                                avatar: payloadData.userAvatar
-                            };
-
-                            if (window.editingId) {
-                                // Edit: Find and replace
-                                const idx = window.rawLedgerData.findIndex(d => d.id === window.editingId);
-                                if (idx > -1) {
-                                    // 保留原有的其他欄位 (如 timestamp)，只更新變更的
-                                    window.rawLedgerData[idx] = { ...window.rawLedgerData[idx], ...newData };
-                                }
-                            } else {
-                                // New: Push
-                                window.rawLedgerData.push(newData);
-                            }
-                            // 立即重繪
-                            renderLedgerList(window.rawLedgerData);
-                        } catch (e) {
-                            console.warn("Optimistic update failed:", e);
-                        }
-                    }
-
                     // 清空輸入
                     document.getElementById('ledger-item').value = '';
                     document.getElementById('ledger-amount').value = '';
@@ -10217,140 +10187,137 @@
             const listContainer = document.getElementById('ledger-list');
             if (!listContainer) return;
 
-            try {
+            // 排序：新的在上面
+            data.sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date));
 
+            const currentUserName = localStorage.getItem('last_user_name') || '匿名'; // [移動到前面定義]
 
-                // 排序：新的在上面
-                data.sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date));
+            const filteredData = data.filter(item => {
+                // 1. 基本 Tab 過濾 (finance / note)
+                if (item.type !== currentLedgerFilter) return false;
 
-                const currentUserName = localStorage.getItem('last_user_name') || '匿名'; // [移動到前面定義]
+                // 2. [新增] 隱私過濾：只顯示公費 OR 自己的私人支出
+                if (item.type === 'finance') {
+                    const pType = item.paymentType || 'Public';
+                    // 如果是公費，保留
+                    if (pType === 'Public' || pType === 'public') return true;
+                    // 如果是私人，檢查是否為自己
+                    if (currentUserName && pType === currentUserName) return true;
 
-                const filteredData = data.filter(item => {
-                    // 1. 基本 Tab 過濾 (finance / note)
-                    if (item.type !== currentLedgerFilter) return false;
-
-                    // 2. [新增] 隱私過濾：只顯示公費 OR 自己的私人支出
-                    if (item.type === 'finance') {
-                        const pType = item.paymentType || 'Public';
-                        // 如果是公費，保留
-                        if (pType === 'Public' || pType === 'public') return true;
-                        // 如果是私人，檢查是否為自己
-                        if (currentUserName && pType === currentUserName) return true;
-
-                        // 其他人的私人支出 -> 隱藏
-                        return false;
-                    }
-
-                    // Note 暫時不過濾 (或視需求而定)
-                    return true;
-                });
-
-                let totalJPY = 0;
-                let totalTWD = 0;
-                // [新增] 私人支出統計
-                let privateJPY = 0;
-                let privateTWD = 0;
-
-                // [刪除] 重複宣告
-                // const currentUserName = localStorage.getItem('last_user_name') || '匿名';
-
-                if (filteredData.length === 0) {
-                    listContainer.innerHTML = `<div style="text-align: center; color: #999; padding: 60px;">尚無紀錄</div>`;
-                    updateTotalDisplay(0, 0);
-                    // 清空私人顯示
-                    const pTotalEl = document.getElementById('user-private-total');
-                    if (pTotalEl) pTotalEl.innerText = '';
-                    return;
+                    // 其他人的私人支出 -> 隱藏
+                    return false;
                 }
 
-                // 1. 分組邏輯 (Group By Date: YYYY-MM-DD)
-                const groups = {};
-                filteredData.forEach(item => {
-                    let dateStr = 'Unknown';
-                    let timeObj = new Date();
-                    try {
-                        timeObj = new Date(item.timestamp || item.date);
-                        // 格式：YYYY-MM-DD
-                        const y = timeObj.getFullYear();
-                        const m = String(timeObj.getMonth() + 1).padStart(2, '0');
-                        const d = String(timeObj.getDate()).padStart(2, '0');
-                        dateStr = `${y}-${m}-${d}`;
-                    } catch (e) { }
+                // Note 暫時不過濾 (或視需求而定)
+                return true;
+            });
 
-                    if (!groups[dateStr]) groups[dateStr] = [];
-                    groups[dateStr].push(item);
+            let totalJPY = 0;
+            let totalTWD = 0;
+            // [新增] 私人支出統計
+            let privateJPY = 0;
+            let privateTWD = 0;
 
-                    // 計算總額 (不變)
-                    if (item.type === 'finance') {
-                        const jpy = parseFloat(item.amount || 0);
-                        const twd = item.twdAmount ? parseInt(item.twdAmount) : Math.round(jpy * (item.rate || 0.21));
+            // [刪除] 重複宣告
+            // const currentUserName = localStorage.getItem('last_user_name') || '匿名';
 
-                        const pType = item.paymentType || 'Public';
-
-                        // 公費總計
-                        if (pType === 'Public' || pType === 'public') {
-                            totalJPY += jpy;
-                            totalTWD += twd;
-                        }
-                        // 私人總計 (只算目前登入者的)
-                        else if (pType === currentUserName) {
-                            privateJPY += jpy;
-                            privateTWD += twd;
-                        }
-                    }
-                });
-
-                // 更新 UI顯示
-                updateTotalDisplay(totalJPY, totalTWD);
-
+            if (filteredData.length === 0) {
+                listContainer.innerHTML = `<div style="text-align: center; color: #999; padding: 60px;">尚無紀錄</div>`;
+                updateTotalDisplay(0, 0);
+                // 清空私人顯示
                 const pTotalEl = document.getElementById('user-private-total');
-                if (pTotalEl) {
-                    if (privateJPY > 0) {
-                        pTotalEl.innerHTML = `
+                if (pTotalEl) pTotalEl.innerText = '';
+                return;
+            }
+
+            // 1. 分組邏輯 (Group By Date: YYYY-MM-DD)
+            const groups = {};
+            filteredData.forEach(item => {
+                let dateStr = 'Unknown';
+                let timeObj = new Date();
+                try {
+                    timeObj = new Date(item.timestamp || item.date);
+                    // 格式：YYYY-MM-DD
+                    const y = timeObj.getFullYear();
+                    const m = String(timeObj.getMonth() + 1).padStart(2, '0');
+                    const d = String(timeObj.getDate()).padStart(2, '0');
+                    dateStr = `${y}-${m}-${d}`;
+                } catch (e) { }
+
+                if (!groups[dateStr]) groups[dateStr] = [];
+                groups[dateStr].push(item);
+
+                // 計算總額 (不變)
+                if (item.type === 'finance') {
+                    const jpy = parseFloat(item.amount || 0);
+                    const twd = item.twdAmount ? parseInt(item.twdAmount) : Math.round(jpy * (item.rate || 0.21));
+
+                    const pType = item.paymentType || 'Public';
+
+                    // 公費總計
+                    if (pType === 'Public' || pType === 'public') {
+                        totalJPY += jpy;
+                        totalTWD += twd;
+                    }
+                    // 私人總計 (只算目前登入者的)
+                    else if (pType === currentUserName) {
+                        privateJPY += jpy;
+                        privateTWD += twd;
+                    }
+                }
+            });
+
+            // 更新 UI顯示
+            updateTotalDisplay(totalJPY, totalTWD);
+
+            const pTotalEl = document.getElementById('user-private-total');
+            if (pTotalEl) {
+                if (privateJPY > 0) {
+                    pTotalEl.innerHTML = `
                     <div style="display: flex; flex-direction: column; align-items: flex-start; margin-left: 8px; line-height: 1.2;">
                         <span style="font-weight: 700; color: #2563EB; font-size: 1rem;">¥ ${privateJPY.toLocaleString()}</span>
                         <span style="font-size: 0.75rem; color: #6B7280;">≈ NT$ ${privateTWD.toLocaleString()}</span>
                     </div>`;
-                    } else {
-                        pTotalEl.innerText = '';
-                    }
+                } else {
+                    pTotalEl.innerText = '';
                 }
+            }
 
-                // 2. 渲染分組
-                let html = '';
-                // 取得今天的日期字串 (用來判斷是否預設展開)
-                const now = new Date();
-                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            // 2. 渲染分組
+            let html = '';
+            // 取得今天的日期字串 (用來判斷是否預設展開)
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-                // 排序日期 (新的日期在上面)
-                const sortedDates = Object.keys(groups).sort((a, b) => new Date(b) - new Date(a));
+            // 排序日期 (新的日期在上面)
+            const sortedDates = Object.keys(groups).sort((a, b) => new Date(b) - new Date(a));
 
-                sortedDates.forEach(dateKey => {
-                    const groupItems = groups[dateKey];
-                    const isToday = (dateKey === todayStr);
+            sortedDates.forEach(dateKey => {
+                const groupItems = groups[dateKey];
+                const isToday = (dateKey === todayStr);
 
-                    // 格式化顯示標題 (YYYY/MM/DD + 星期)
-                    let displayDateTitle = dateKey;
-                    try {
-                        const d = new Date(dateKey); // 這裡會是 UTC 00:00，但因為我們只取年月日，應該沒差
-                        // 修正：直接解析字串避免時區問題
-                        const [yy, mm, dd] = dateKey.split('-');
-                        const dateObj = new Date(parseInt(yy), parseInt(mm) - 1, parseInt(dd));
-                        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-                        displayDateTitle = `${yy}/${mm}/${dd} (${dayNames[dateObj.getDay()]})`;
-                    } catch (e) { }
+                // 格式化顯示標題 (YYYY/MM/DD + 星期)
+                let displayDateTitle = dateKey;
+                try {
+                    const d = new Date(dateKey); // 這裡會是 UTC 00:00，但因為我們只取年月日，應該沒差
+                    // 修正：直接解析字串避免時區問題
+                    const [yy, mm, dd] = dateKey.split('-');
+                    const dateObj = new Date(parseInt(yy), parseInt(mm) - 1, parseInt(dd));
+                    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                    displayDateTitle = `${yy}/${mm}/${dd} (${dayNames[dateObj.getDay()]})`;
+                } catch (e) { }
 
-                    // 標題 HTML (點擊切換顯示)
-                    // isToday 預設展開，其他預設折疊
-                    const arrowTransform = isToday ? 'rotate(180deg)' : 'rotate(0deg)';
-                    const contentDisplay = isToday ? 'block' : 'none';
+                // 標題 HTML (點擊切換顯示)
+                // isToday 預設展開，其他預設折疊
+                const arrowTransform = isToday ? 'rotate(180deg)' : 'rotate(0deg)';
+                const contentDisplay = isToday ? 'block' : 'none';
 
-                    // 生成 Group ID
-                    const groupId = `group-${dateKey}`;
+                // 生成 Group ID
+                const groupId = `group-${dateKey}`;
 
-                    const itemCount = groupItems.length; // [新增] 計算筆數
+                const itemCount = groupItems.length; // [新增] 計算筆數
 
-                    html += `
+                html += `
                 <div class="ledger-group" style="margin-bottom: 20px;">
                     <div onclick="toggleLedgerGroup('${groupId}', this)" 
                          style="display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; cursor: pointer; user-select: none;">
@@ -10367,49 +10334,49 @@
                     <div id="${groupId}" style="display: ${contentDisplay};">
                 `;
 
-                    // 渲染該日期的所有項目
-                    groupItems.forEach(item => {
-                        // ★★★ 核心解析邏輯 (與原本相同) ★★★
-                        let displayUser = { name: '未知', avatar: '👤' };
-                        try {
-                            if (typeof item.user === 'object' && item.user !== null) {
-                                displayUser = item.user;
-                            } else if (typeof item.user === 'string') {
-                                if (item.user.trim().startsWith('{')) {
-                                    displayUser = JSON.parse(item.user);
-                                } else {
-                                    displayUser = { name: item.user, avatar: '👤' };
-                                }
+                // 渲染該日期的所有項目
+                groupItems.forEach(item => {
+                    // ★★★ 核心解析邏輯 (與原本相同) ★★★
+                    let displayUser = { name: '未知', avatar: '👤' };
+                    try {
+                        if (typeof item.user === 'object' && item.user !== null) {
+                            displayUser = item.user;
+                        } else if (typeof item.user === 'string') {
+                            if (item.user.trim().startsWith('{')) {
+                                displayUser = JSON.parse(item.user);
+                            } else {
+                                displayUser = { name: item.user, avatar: '👤' };
                             }
-                        } catch (e) {
-                            console.warn("解析使用者資料失敗", item.user);
                         }
+                    } catch (e) {
+                        console.warn("解析使用者資料失敗", item.user);
+                    }
 
-                        // 時間只顯示 HH:mm (因為日期在標題了)
-                        let timeStr = '';
-                        try {
-                            const t = new Date(item.timestamp || item.date);
-                            timeStr = `${t.getHours().toString().padStart(2, '0')}:${t.getMinutes().toString().padStart(2, '0')}`;
-                        } catch (e) { }
+                    // 時間只顯示 HH:mm (因為日期在標題了)
+                    let timeStr = '';
+                    try {
+                        const t = new Date(item.timestamp || item.date);
+                        timeStr = `${t.getHours().toString().padStart(2, '0')}:${t.getMinutes().toString().padStart(2, '0')}`;
+                    } catch (e) { }
 
-                        if (item.type === 'finance') {
-                            const jpy = parseFloat(item.amount || 0);
-                            const twd = item.twdAmount ? parseInt(item.twdAmount) : Math.round(jpy * (item.rate || 0.21));
-                            const displayTitle = item.content || item.item || '無標題';
+                    if (item.type === 'finance') {
+                        const jpy = parseFloat(item.amount || 0);
+                        const twd = item.twdAmount ? parseInt(item.twdAmount) : Math.round(jpy * (item.rate || 0.21));
+                        const displayTitle = item.content || item.item || '無標題';
 
-                            // 驗證身分
-                            const currentUserName = localStorage.getItem('last_user_name');
-                            let actionButtons = '';
+                        // 驗證身分
+                        const currentUserName = localStorage.getItem('last_user_name');
+                        let actionButtons = '';
 
-                            // [新增] 付款方式圖示對應
-                            let payIcon = '💵'; // 預設現金
-                            const pm = (item.paymentMethod || '').toLowerCase();
-                            if (pm.includes('card') || pm.includes('刷卡')) payIcon = '💳';
-                            else if (pm.includes('ic') || pm.includes('suica')) payIcon = '🐧';
-                            else if (pm.includes('pay')) payIcon = '📱';
+                        // [新增] 付款方式圖示對應
+                        let payIcon = '💵'; // 預設現金
+                        const pm = (item.paymentMethod || '').toLowerCase();
+                        if (pm.includes('card') || pm.includes('刷卡')) payIcon = '💳';
+                        else if (pm.includes('ic') || pm.includes('suica')) payIcon = '🐧';
+                        else if (pm.includes('pay')) payIcon = '📱';
 
-                            if (currentUserName && displayUser.name === currentUserName) {
-                                actionButtons = `
+                        if (currentUserName && displayUser.name === currentUserName) {
+                            actionButtons = `
                             <div style="display: flex; gap: 10px; margin-top: 8px; justify-content: flex-end;">
                                 <button onclick="editLedgerItem('${item.id}')" style="background:none; border:none; cursor:pointer; padding:4px;">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -10424,9 +10391,9 @@
                                     </svg>
                                 </button>
                             </div>`;
-                            }
+                        }
 
-                            html += `
+                        html += `
                         <div class="card" style="margin-bottom: 12px; padding: 15px; border-left: 4px solid #F97316; background: white; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div style="display: flex; gap: 12px;">
@@ -10451,72 +10418,61 @@
                             </div>
                             ${actionButtons}
                         </div>`;
-                        } else {
-                            // 筆記模式
-                            // [修正] 強制轉為字串，避免數字或 null 導致 includes 報錯
-                            let rawContent = item.content || item.item;
-                            let noteContent = (rawContent === undefined || rawContent === null) ? '無內容' : String(rawContent);
-                            const currentUserName = localStorage.getItem('last_user_name');
+                    } else {
+                        // 筆記模式
+                        let noteContent = item.content || item.item || '無內容';
+                        const currentUserName = localStorage.getItem('last_user_name');
 
-                            // [新增] 識別與顯示公告圖示
-                            const isAnnouncement = noteContent.includes('[公告]') || noteContent.includes('#公告');
-                            // 移除標記以便乾淨顯示
-                            noteContent = noteContent.replace(/\[公告\]|#公告/g, '').trim();
+                        // [新增] 識別與顯示公告圖示
+                        const isAnnouncement = noteContent.includes('[公告]') || noteContent.includes('#公告');
+                        // 移除標記以便乾淨顯示
+                        noteContent = noteContent.replace(/\[公告\]|#公告/g, '').trim();
 
-                            let timeDisplay = timeStr;
-                            if (isAnnouncement) {
-                                // 在時間左邊加入紅色圖釘
-                                timeDisplay = `
+                        let timeDisplay = timeStr;
+                        if (isAnnouncement) {
+                            // 在時間左邊加入紅色圖釘
+                            timeDisplay = `
                              <svg width="14" height="14" viewBox="0 0 24 24" fill="#FEE2E2" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; transform:rotate(45deg);">
                                 <line x1="12" y1="17" x2="12" y2="22"></line>
                                 <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
                              </svg> ${timeStr}`;
-                            }
+                        }
 
-                            // [新增] 圖片處理邏輯
-                            let imagesHtml = '';
-                            let imagesData = [];
-
-                            // 兼容多種圖片格式來源
-                            if (Array.isArray(item.images) && item.images.length > 0) {
-                                // 來自 Optimistic Update 或新版資料結構
-                                imagesData = item.images;
-                            } else if (item.image && typeof item.image === 'string') {
-                                // 來自舊版 GAS 回傳 (字串以換行分隔)
-                                imagesData = item.image.split('\n').filter(u => u.trim() !== '');
-                            } else if (Array.isArray(item.image)) {
-                                // 防呆
-                                imagesData = item.image;
-                            }
+                        // [新增] 圖片處理邏輯
+                        let imagesHtml = '';
+                        let imagesData = [];
+                        if (item.image && typeof item.image === 'string') {
+                            imagesData = item.image.split('\n').filter(u => u.trim() !== '');
+                        }
 
 
-                            if (imagesData.length > 0) {
-                                // [修正] 將圖片資料存入全域 Cache，避免 onclick 傳遞過大字串導致失效
-                                if (!window.ledgerImagesCache) window.ledgerImagesCache = {};
-                                window.ledgerImagesCache[item.id] = imagesData;
+                        if (imagesData.length > 0) {
+                            // [修正] 將圖片資料存入全域 Cache，避免 onclick 傳遞過大字串導致失效
+                            if (!window.ledgerImagesCache) window.ledgerImagesCache = {};
+                            window.ledgerImagesCache[item.id] = imagesData;
 
-                                const previewHtml = imagesData.map((src, idx) => {
-                                    return `
+                            const previewHtml = imagesData.map((src, idx) => {
+                                return `
                                  <div class="note-img-thumb" style="width: 80px; height: 80px; border-radius: 8px; overflow: hidden; flex-shrink: 0; cursor: pointer; border:1px solid #eee;"
                                       onclick="openGalleryFromList('${item.id}', ${idx})">
                                      <img src="${src}" style="width: 100%; height: 100%; object-fit: cover;">
                                  </div>
                                  `;
-                                }).join('');
+                            }).join('');
 
-                                imagesHtml = `
+                            imagesHtml = `
                              <div class="horizontal-scroll-container" 
                                   style="display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; padding-bottom: 4px;"
                                   ontouchstart="event.stopPropagation()" 
                                   ontouchmove="event.stopPropagation()">
                                 ${previewHtml}
                              </div>`;
-                            }
+                        }
 
-                            let actionButtons = '';
+                        let actionButtons = '';
 
-                            if (currentUserName && displayUser.name === currentUserName) {
-                                actionButtons = `
+                        if (currentUserName && displayUser.name === currentUserName) {
+                            actionButtons = `
                             <div style="display: flex; gap: 10px; margin-top: 8px; justify-content: flex-end; border-top: 1px dashed #eee; padding-top: 8px;">
                                 <button onclick="editLedgerItem('${item.id}')" style="background:none; border:none; cursor:pointer; padding:4px;">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -10531,9 +10487,9 @@
                                     </svg>
                                 </button>
                             </div>`;
-                            }
+                        }
 
-                            html += `
+                        html += `
                         <div class="card" style="margin-bottom: 12px; padding: 15px; border-left: 4px solid #2563EB; background: white; border-radius: 12px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px dashed #eee; padding-bottom: 8px;">
                                 <div style="display: flex; gap: 8px; align-items: center;">
@@ -10546,25 +10502,17 @@
                             ${imagesHtml}
                             ${actionButtons}
                         </div>`;
-                        }
-                    });
-
-                    html += `</div></div>`; // Close group div
+                    }
                 });
 
-                listContainer.innerHTML = html;
-                updateTotalDisplay(totalJPY, totalTWD);
+                html += `</div></div>`; // Close group div
+            });
 
-                // [New] Update Marquee whenever list is rendered
-                renderAnnouncementMarquee(data);
-            } catch (e) {
-                console.error("Render error:", e);
-                listContainer.innerHTML = `<div style="text-align:center; color:red; padding:20px;">
-                    <h3>列表顯示錯誤</h3>
-                    <p>${e.message}</p>
-                    <pre style="text-align:left; font-size:0.8rem; overflow:auto;">${e.stack}</pre>
-                </div>`;
-            }
+            listContainer.innerHTML = html;
+            updateTotalDisplay(totalJPY, totalTWD);
+
+            // [New] Update Marquee whenever list is rendered
+            renderAnnouncementMarquee(data);
         }
 
         // [新增] 切換折疊顯示
