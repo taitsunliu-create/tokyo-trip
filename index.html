@@ -9981,8 +9981,22 @@
                     rate: String(finalRate),
                     twdAmount: finalAmountTwd,
                     twdAmount: finalAmountTwd,
-                    item: isFinance ? (document.getElementById('ledger-item')?.value || '') : ((isAnnouncementMode ? '[公告] ' : '') + (document.getElementById('ledger-note-content')?.value || '')),
-                    content: isFinance ? (document.getElementById('ledger-item')?.value || '') : ((isAnnouncementMode ? '[公告] ' : '') + (document.getElementById('ledger-note-content')?.value || '')),
+                    item: isFinance ? (document.getElementById('ledger-item')?.value || '') : (() => {
+                        let content = document.getElementById('ledger-note-content')?.value || '';
+                        // 先移除舊標記，避免重複
+                        content = content.replace(/\[公告\]\s*|#公告\s*/g, '');
+                        // 若模式開啟則加回去
+                        if (isAnnouncementMode) content = '[公告] ' + content;
+                        return content;
+                    })(),
+                    content: isFinance ? (document.getElementById('ledger-item')?.value || '') : (() => {
+                        let content = document.getElementById('ledger-note-content')?.value || '';
+                        // 先移除舊標記，避免重複
+                        content = content.replace(/\[公告\]\s*|#公告\s*/g, '');
+                        // 若模式開啟則加回去
+                        if (isAnnouncementMode) content = '[公告] ' + content;
+                        return content;
+                    })(),
                     amount: finalAmountJpy,
                     amount: finalAmountJpy,
                     // [新增] 付款方式
@@ -10906,7 +10920,20 @@
             } else {
                 filterLedgerView('note');
                 // 填入資料
-                document.getElementById('ledger-note-content').value = item.content || item.item || '';
+                let contentText = item.content || item.item || '';
+
+                // [新增] 偵測是否為公告 -> 設定 isAnnouncementMode
+                if (contentText.includes('[公告]') || contentText.includes('#公告')) {
+                    isAnnouncementMode = true;
+                    // 移除標記，讓編輯框只顯示純文字
+                    contentText = contentText.replace(/\[公告\]\s*|#公告\s*/g, '');
+                } else {
+                    isAnnouncementMode = false;
+                }
+                // 更新按鈕狀態
+                if (typeof updatePinButtonState === 'function') updatePinButtonState();
+
+                document.getElementById('ledger-note-content').value = contentText;
 
                 // [新增] 填入日期
                 const dateInput = document.getElementById('ledger-note-date');
@@ -11035,6 +11062,11 @@
 
             // [新增] 重置日期為今天
             const today = new Date();
+
+            // [新增] 離開編輯模式時，重置公告狀態
+            isAnnouncementMode = false;
+            // 確保 Pin 按鈕狀態更新 (例如變回灰色)
+            if (typeof updatePinButtonState === 'function') updatePinButtonState();
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const dd = String(today.getDate()).padStart(2, '0');
