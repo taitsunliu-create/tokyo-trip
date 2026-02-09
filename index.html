@@ -10453,7 +10453,9 @@
                         </div>`;
                         } else {
                             // 筆記模式
-                            let noteContent = item.content || item.item || '無內容';
+                            // [修正] 強制轉為字串，避免數字或 null 導致 includes 報錯
+                            let rawContent = item.content || item.item;
+                            let noteContent = (rawContent === undefined || rawContent === null) ? '無內容' : String(rawContent);
                             const currentUserName = localStorage.getItem('last_user_name');
 
                             // [新增] 識別與顯示公告圖示
