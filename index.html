@@ -10015,6 +10015,36 @@
                 const result = await resp.json();
 
                 if (result.status === 'success' || result.result === 'success') {
+                    // [Optimistic Update] 本地先更新，讓 UI 即時反應 (包含移除公告標記)
+                    if (window.rawLedgerData) {
+                        try {
+                            const newData = { ...payloadData };
+                            // 確保數值型別
+                            newData.amount = parseFloat(newData.amount) || 0;
+                            // 確保 user 格式一致
+                            newData.user = {
+                                name: payloadData.userName,
+                                avatar: payloadData.userAvatar
+                            };
+
+                            if (window.editingId) {
+                                // Edit: Find and replace
+                                const idx = window.rawLedgerData.findIndex(d => d.id === window.editingId);
+                                if (idx > -1) {
+                                    // 保留原有的其他欄位 (如 timestamp)，只更新變更的
+                                    window.rawLedgerData[idx] = { ...window.rawLedgerData[idx], ...newData };
+                                }
+                            } else {
+                                // New: Push
+                                window.rawLedgerData.push(newData);
+                            }
+                            // 立即重繪
+                            renderLedgerList(window.rawLedgerData);
+                        } catch (e) {
+                            console.warn("Optimistic update failed:", e);
+                        }
+                    }
+
                     // 清空輸入
                     document.getElementById('ledger-item').value = '';
                     document.getElementById('ledger-amount').value = '';
