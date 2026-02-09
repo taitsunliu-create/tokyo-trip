@@ -1438,6 +1438,17 @@
         }
 
         /* Info Sections */
+        /* [新增] Marquee Animation */
+        @keyframes marquee {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
         .info-section {
             background-color: var(--info-bg);
             padding: 15px;
@@ -5578,6 +5589,20 @@
                             <!-- Column: Image + Submit -->
                             <div
                                 style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px;">
+
+                                <!-- [新增] 公告按鈕 (Pin Input) -->
+                                <button onclick="toggleAnnouncementMode(this)" id="btn-pin-note"
+                                    style="width: 44px; height: 28px; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; border: none; background: transparent; cursor: pointer; color: #9CA3AF; transition: color 0.3s;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                        style="transform: rotate(45deg);">
+                                        <line x1="12" y1="17" x2="12" y2="22"></line>
+                                        <path
+                                            d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z">
+                                        </path>
+                                    </svg>
+                                </button>
+
                                 <!-- Image Button (Compact Height ~28px) -->
                                 <button onclick="document.getElementById('multi-img-input').click()"
                                     style="width: 44px; height: 28px; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; border: none; background: transparent; cursor: pointer;">
@@ -9908,8 +9933,10 @@
                     })(),
                     rate: String(finalRate),
                     twdAmount: finalAmountTwd,
-                    item: isFinance ? (document.getElementById('ledger-item')?.value || '') : (document.getElementById('ledger-note-content')?.value || ''),
-                    content: isFinance ? (document.getElementById('ledger-item')?.value || '') : (document.getElementById('ledger-note-content')?.value || ''),
+                    twdAmount: finalAmountTwd,
+                    item: isFinance ? (document.getElementById('ledger-item')?.value || '') : ((isAnnouncementMode ? '[公告] ' : '') + (document.getElementById('ledger-note-content')?.value || '')),
+                    content: isFinance ? (document.getElementById('ledger-item')?.value || '') : ((isAnnouncementMode ? '[公告] ' : '') + (document.getElementById('ledger-note-content')?.value || '')),
+                    amount: finalAmountJpy,
                     amount: finalAmountJpy,
                     // [新增] 付款方式
                     paymentMethod: isFinance ? (document.getElementById('ledger-payment-method')?.value || 'cash') : '',
@@ -10405,7 +10432,11 @@
             });
 
             listContainer.innerHTML = html;
+            listContainer.innerHTML = html;
             updateTotalDisplay(totalJPY, totalTWD);
+
+            // [New] Update Marquee whenever list is rendered
+            renderAnnouncementMarquee(data);
         }
 
         // [新增] 切換折疊顯示
