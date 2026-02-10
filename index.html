@@ -10928,19 +10928,48 @@
             } else {
                 filterLedgerView('note');
                 // 填入資料
-                let contentText = item.content || item.item || '';
-
-
-                // [新增] 偵測是否為公告 -> 設定 isAnnouncementMode
-                if (contentText.includes('[公告]') || contentText.includes('#公告')) {
-                    // 移除標記，讓編輯框只顯示純文字
-                    contentText = contentText.replace(/\[公告\]\s*|#公告\s*/g, '');
-                    if (typeof setAnnouncementMode === 'function') setAnnouncementMode(true);
-                } else {
-                    if (typeof setAnnouncementMode === 'function') setAnnouncementMode(false);
-                }
-
+                // [新順序] 1. 先填入資料到輸入框 (這樣 updatePinButtonState 才能讀取到正確的內容長度)
                 document.getElementById('ledger-note-content').value = contentText;
+
+                // [新順序] 2. 再設定公告模式 (會觸發 updatePinButtonState)
+                if (contentText.includes('[公告]') || contentText.includes('#公告')) {
+                    // 移除標記，讓編輯框只顯示純文字 (顯示時已經被上方 replace 處理過了，這裡只需要判斷原始 contentText 是否包含)
+                    // 等等，上方的 contentText 已經是處理過的嗎？ 
+                    // 不，原始 item.content 沒變。
+                    // 讓我們重新梳理邏輯：
+
+                    // A. 原始資料
+                    let rawContent = item.content || item.item || '';
+
+                    // B. 偵測是否為公告
+                    const isAnnouncement = rawContent.includes('[公告]') || rawContent.includes('#公告');
+
+                    // C. 移除標記 (用於顯示在 input)
+                    let cleanContent = rawContent.replace(/\[公告\]\s*|#公告\s*/g, '');
+
+                    // D. 填入 Input
+                    document.getElementById('ledger-note-content').value = cleanContent;
+
+                    // E. 設定模式
+                    if (isAnnouncement) {
+                        if (typeof setAnnouncementMode === 'function') setAnnouncementMode(true);
+                    } else {
+                        if (typeof setAnnouncementMode === 'function') setAnnouncementMode(false);
+                    }
+                } else {
+                    // 針對舊邏輯的相容 (若上面 contentText 已經是 clean 的)
+                    // 稍微調整一下程式碼結構以確保安全
+
+                    let rawContent = item.content || item.item || '';
+                    let isAnnouncement = rawContent.includes('[公告]') || rawContent.includes('#公告');
+                    let cleanContent = rawContent.replace(/\[公告\]\s*|#公告\s*/g, '');
+
+                    document.getElementById('ledger-note-content').value = cleanContent;
+
+                    if (typeof setAnnouncementMode === 'function') {
+                        setAnnouncementMode(isAnnouncement);
+                    }
+                }
 
                 // [新增] 填入日期
                 const dateInput = document.getElementById('ledger-note-date');
