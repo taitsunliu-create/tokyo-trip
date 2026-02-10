@@ -4103,6 +4103,8 @@
             overflow: hidden;
             white-space: nowrap;
             position: relative;
+            font-size: 0.9rem;
+            -webkit-text-size-adjust: 100%;
         ">
             <div style="
                 flex-shrink: 0;
@@ -10290,25 +10292,18 @@
                 const itemId = item.id || item.timestamp;
                 // 如果是新項目 (不在舊清單中)
                 if (!oldIds.has(itemId)) {
-                    // 解析作者與頭像
+                    // 解析作者
                     let author = '有人';
-                    let avatarChar = '👤'; // 抓取原始的 Emoji 或 URL
-
                     try {
-                        let uObj = null;
                         if (item.user && typeof item.user === 'object') {
-                            uObj = item.user;
+                            author = item.user.name || '成員';
                         } else if (typeof item.user === 'string') {
                             if (item.user.startsWith('{')) {
-                                uObj = JSON.parse(item.user);
+                                const uObj = JSON.parse(item.user);
+                                author = uObj.name || '成員';
                             } else {
                                 author = item.user;
                             }
-                        }
-
-                        if (uObj) {
-                            author = uObj.name || '成員';
-                            if (uObj.avatar) avatarChar = uObj.avatar;
                         }
                     } catch (e) {
                         console.warn('Parse user failed', e);
@@ -10324,20 +10319,11 @@
                         // 過濾掉公告標籤
                         const cleanContent = noteContent.replace(/\[公告\]|#公告/g, '').trim();
 
-                        // [Fix] 將 Emoji 轉為圖片，或者保留 URL
-                        let iconUrl = 'icon-512.png';
-                        if (avatarChar.startsWith('http') || avatarChar.startsWith('data:')) {
-                            iconUrl = avatarChar;
-                        } else {
-                            // 假設是 Emoji，轉成圖片
-                            iconUrl = generateAvatarIcon(avatarChar);
-                        }
-
                         // 嘗試發送
                         try {
-                            new Notification(`${author} 新增了一則記事`, {
+                            new Notification(`📝 ${author} 新增了一則記事`, {
                                 body: cleanContent || '分享了一張圖片',
-                                icon: iconUrl,
+                                icon: 'icon-512.png',
                                 tag: `tokyo-trip-note-${itemId}` // [Fix] 使用唯一 tag，避免通知被覆蓋
                             });
                         } catch (e) {
@@ -10346,34 +10332,6 @@
                     }
                 }
             });
-        }
-
-        // [新增] 輔助函式：將 Emoji 轉為圖片 URL
-        function generateAvatarIcon(emoji) {
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = 128;
-                canvas.height = 128;
-                const ctx = canvas.getContext('2d');
-
-                // 背景 (淺色圓形)
-                ctx.fillStyle = '#f3f4f6';
-                ctx.beginPath();
-                ctx.arc(64, 64, 64, 0, Math.PI * 2);
-                ctx.fill();
-
-                // 文字 (Emoji)
-                ctx.font = '80px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                // 微調 Y 軸以置中
-                ctx.fillText(emoji || '👤', 64, 70);
-
-                return canvas.toDataURL();
-            } catch (e) {
-                console.warn("Generate avatar failed", e);
-                return 'icon-512.png';
-            }
         }
 
         // B. 更新後的同步函式 (加入快取機制 + 背景輪詢)
