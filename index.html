@@ -4130,7 +4130,7 @@
                     display: inline-block;
                     padding-left: 100%;
                     animation: marquee 15s linear infinite;
-                    font-size: 0.76rem;
+                    animation: marquee 15s linear infinite;
                 ">
                     <!-- Javascript will populate this -->
                 </div>
@@ -12143,9 +12143,12 @@
                 const rawText = item.content || item.item || '';
                 const cleanText = rawText.replace(/\[公告\]|#公告/g, '').trim();
 
+                // [Fix] If text is empty (e.g. only image + tag), skip it.
+                if (!cleanText) return '';
+
                 // Format: Date Name： Content
                 return `<span style="font-weight:700; color:#B45309; margin-right:4px;">${dateStr}</span><span style="font-weight:700; color:#D97706; margin-right:4px;">${userName}：</span><span style="color:#92400E;">${cleanText}</span>`;
-            });
+            }).filter(part => part !== ''); // Remove empty parts
 
             // Using a simple join with spacing
             content.innerHTML = parts.join('<span style="margin: 0 20px; color:#FCD34D;">|</span>');
