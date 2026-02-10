@@ -5381,7 +5381,7 @@
             </div>
             <div
                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; padding: 0 5px;">
-                <button onclick="requestNotificationPermission()"
+                <button id="btn-notify-toggle" onclick="toggleNotification()"
                     style="border: none; background: none; color: #2563EB; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                         stroke-linejoin="round" style="width: 16px; height: 16px;">
@@ -10176,26 +10176,87 @@
         // [新增] 確保全域變數存在 (解決 Delete/Edit 找不到資料的問題)
         window.rawLedgerData = [];
 
-        // [新增] 請求通知權限
-        function requestNotificationPermission() {
-            if (!("Notification" in window)) {
-                alert("您的瀏覽器不支援通知功能。");
-                return;
+        // [新增] 通知功能相關邏輯 (含切換與狀態保存)
+        const NOTIFY_KEY = 'ledger_notify_enabled';
+        let pollingInterval = null;
+
+        // 初始化：檢查設定並更新 UI
+        function initNotificationState() {
+            const isEnabled = localStorage.getItem(NOTIFY_KEY) === 'true';
+            updateNotificationUI(isEnabled);
+
+            // 如果原本是開啟且有權限，就開始輪詢
+            if (isEnabled && "Notification" in window && Notification.permission === "granted") {
+                startLedgerPolling();
             }
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    alert("通知已開啟！每 60 秒會自動檢查新記事。");
-                    startLedgerPolling();
-                    // 立即同步一次
-                    syncLedgerData(true);
-                } else {
-                    alert("您已拒絕通知權限。");
-                }
-            });
         }
 
-        // [新增] 啟動輪詢 (每 60 秒)
-        let pollingInterval = null;
+        // 更新按鈕外觀
+        function updateNotificationUI(isEnabled) {
+            const btn = document.getElementById('btn-notify-toggle');
+            if (!btn) return;
+
+            const textSpan = btn.querySelector('span');
+            const iconSvg = btn.querySelector('svg');
+
+            if (isEnabled) {
+                // 開啟狀態 -> 顯示「關閉通知」選項
+                textSpan.innerText = '關閉新記事通知';
+                textSpan.style.color = '#EF4444'; // 紅色
+                // 鈴鐺加個斜線 (或者維持鈴鐺但變色) -> 用簡單的劃掉圖示
+                // 這裡簡單換成紅色的鈴鐺
+                btn.style.color = '#EF4444';
+                // iconSvg path 可以不變，只變顏色
+            } else {
+                // 關閉狀態 -> 顯示「開啟通知」選項
+                textSpan.innerText = '開啟新記事通知';
+                textSpan.style.color = '#2563EB'; // 藍色
+                btn.style.color = '#2563EB';
+            }
+        }
+
+        // 切換開關 (綁定在按鈕上)
+        function toggleNotification() {
+            if (!("Notification" in window)) {
+                alert("瀏覽器不支援通知功能。");
+                return;
+            }
+
+            const currentState = localStorage.getItem(NOTIFY_KEY) === 'true';
+
+            if (currentState) {
+                // 執行關閉
+                localStorage.setItem(NOTIFY_KEY, 'false');
+                stopLedgerPolling();
+                updateNotificationUI(false);
+                alert("已關閉通知。");
+            } else {
+                // 執行開啟
+                if (Notification.permission === "granted") {
+                    enableNotification();
+                } else if (Notification.permission !== "denied") {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === "granted") {
+                            enableNotification();
+                        } else {
+                            alert("您已拒絕通知權限。");
+                        }
+                    });
+                } else {
+                    alert("通知權限已被封鎖，請至瀏覽器設定開啟。");
+                }
+            }
+        }
+
+        function enableNotification() {
+            localStorage.setItem(NOTIFY_KEY, 'true');
+            startLedgerPolling();
+            updateNotificationUI(true);
+            alert("通知已開啟！每 60 秒檢查一次新記事。");
+            // 立即同步一次
+            syncLedgerData(true);
+        }
+
         function startLedgerPolling() {
             if (pollingInterval) clearInterval(pollingInterval);
             console.log("[Polling] Started (60s interval)");
@@ -10204,8 +10265,19 @@
             }, 60000);
         }
 
+        function stopLedgerPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+                console.log("[Polling] Stopped");
+            }
+        }
+
         // [新增] 檢查並發送通知
         function checkAndNotifyNewNotes(oldData, newData) {
+            // 雙重確認：只有在開啟狀態才通知
+            if (localStorage.getItem(NOTIFY_KEY) !== 'true') return;
+
             if (!oldData || oldData.length === 0) return; // 第一次載入不通知
 
             const currentUserName = localStorage.getItem('last_user_name');
@@ -10241,8 +10313,8 @@
                         try {
                             new Notification(`📝 ${author} 新增了一則記事`, {
                                 body: cleanContent,
-                                icon: 'icon-512.png', // 假設有這個 icon
-                                tag: 'tokyo-trip-note' // 避免重複堆疊
+                                icon: 'icon-512.png',
+                                tag: 'tokyo-trip-note'
                             });
                         } catch (e) {
                             console.warn("Notification failed", e);
@@ -12070,9 +12142,9 @@
             syncLedgerData().then(success => {
                 if (success) {
                     console.log("[Init] Sync success!");
-                    // [新增] 如果已授權通知，啟動輪詢
-                    if ("Notification" in window && Notification.permission === "granted") {
-                        startLedgerPolling();
+                    // [新增] 初始化通知狀態
+                    if (typeof initNotificationState === 'function') {
+                        initNotificationState();
                     }
                 } else {
                     console.warn(`[Init] Sync failed or keys missing.`);
