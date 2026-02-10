@@ -10088,7 +10088,12 @@
                             }
                             // [修正] 等到還原圖示後，才去檢查狀態 (這時 input 是空的，會變灰)
                             updateLedgerSubmitState();
-                            if (typeof updatePinButtonState === 'function') updatePinButtonState();
+                            // [修正] 成功後重置公告狀態與 Placeholder
+                            if (typeof setAnnouncementMode === 'function') {
+                                setAnnouncementMode(false);
+                            } else {
+                                if (typeof updatePinButtonState === 'function') updatePinButtonState();
+                            }
                         }, 1500);
                     } else {
                         alert(`✅ 儲存成功！`);
@@ -10922,16 +10927,15 @@
                 // 填入資料
                 let contentText = item.content || item.item || '';
 
+
                 // [新增] 偵測是否為公告 -> 設定 isAnnouncementMode
                 if (contentText.includes('[公告]') || contentText.includes('#公告')) {
-                    isAnnouncementMode = true;
                     // 移除標記，讓編輯框只顯示純文字
                     contentText = contentText.replace(/\[公告\]\s*|#公告\s*/g, '');
+                    if (typeof setAnnouncementMode === 'function') setAnnouncementMode(true);
                 } else {
-                    isAnnouncementMode = false;
+                    if (typeof setAnnouncementMode === 'function') setAnnouncementMode(false);
                 }
-                // 更新按鈕狀態
-                if (typeof updatePinButtonState === 'function') updatePinButtonState();
 
                 document.getElementById('ledger-note-content').value = contentText;
 
@@ -11064,9 +11068,12 @@
             const today = new Date();
 
             // [新增] 離開編輯模式時，重置公告狀態
-            isAnnouncementMode = false;
-            // 確保 Pin 按鈕狀態更新 (例如變回灰色)
-            if (typeof updatePinButtonState === 'function') updatePinButtonState();
+            if (typeof setAnnouncementMode === 'function') {
+                setAnnouncementMode(false);
+            } else {
+                isAnnouncementMode = false;
+                if (typeof updatePinButtonState === 'function') updatePinButtonState();
+            }
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const dd = String(today.getDate()).padStart(2, '0');
@@ -11993,15 +12000,23 @@
         // [New] Announcement Logic
         let isAnnouncementMode = false;
 
+        // [New] 修改為集中管理的模式切換函式
         function toggleAnnouncementMode(btn) {
-            isAnnouncementMode = !isAnnouncementMode;
+            setAnnouncementMode(!isAnnouncementMode);
+        }
+
+        // [New] 集中管理公告模式狀態與 UI
+        function setAnnouncementMode(enabled) {
+            isAnnouncementMode = enabled;
             updatePinButtonState();
 
             const noteInput = document.getElementById('ledger-note-content');
-            if (isAnnouncementMode) {
-                if (noteInput) noteInput.placeholder = "輸入公告內容...";
-            } else {
-                if (noteInput) noteInput.placeholder = "寫下旅程點滴...";
+            if (noteInput) {
+                if (isAnnouncementMode) {
+                    noteInput.placeholder = "輸入公告內容...";
+                } else {
+                    noteInput.placeholder = "寫下旅程點滴...";
+                }
             }
         }
 
