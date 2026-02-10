@@ -10191,6 +10191,9 @@
 
         // [修正版] 渲染列表 (分組 + 折疊 + 含年份)
         function renderLedgerList(data) {
+            // [Fix] Always render marquee first, regardless of filter state
+            renderAnnouncementMarquee(data);
+
             const listContainer = document.getElementById('ledger-list');
             if (!listContainer) return;
 
@@ -10517,9 +10520,6 @@
 
             listContainer.innerHTML = html;
             updateTotalDisplay(totalJPY, totalTWD);
-
-            // [New] Update Marquee whenever list is rendered
-            renderAnnouncementMarquee(data);
         }
 
         // [新增] 切換折疊顯示
