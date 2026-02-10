@@ -10294,17 +10294,18 @@
                 if (!oldIds.has(itemId)) {
                     // 解析作者與頭像
                     let author = '有人';
-                    let avatarUrl = 'icon-512.png'; // 預設圖示
+                    let avatar = '👤'; // 預設頭像
 
                     try {
                         if (item.user && typeof item.user === 'object') {
                             author = item.user.name || '成員';
-                            if (item.user.avatar) avatarUrl = item.user.avatar;
+                            // 這裡的 avatar 其實是 emoji 字元
+                            if (item.user.avatar) avatar = item.user.avatar;
                         } else if (typeof item.user === 'string') {
                             if (item.user.startsWith('{')) {
                                 const uObj = JSON.parse(item.user);
                                 author = uObj.name || '成員';
-                                if (uObj.avatar) avatarUrl = uObj.avatar;
+                                if (uObj.avatar) avatar = uObj.avatar;
                             } else {
                                 author = item.user;
                             }
@@ -10325,9 +10326,10 @@
 
                         // 嘗試發送
                         try {
-                            new Notification(`${author} 新增了一則記事`, {
+                            // [Fix] 將 Emoji 頭像加在標題最前面
+                            new Notification(`${avatar} ${author} 新增了一則記事`, {
                                 body: cleanContent || '分享了一張圖片',
-                                icon: avatarUrl, // 使用使用者頭像
+                                icon: 'icon-512.png', // 恢復使用 APP icon，因為 avatar 是文字
                                 tag: `tokyo-trip-note-${itemId}` // [Fix] 使用唯一 tag，避免通知被覆蓋
                             });
                         } catch (e) {
