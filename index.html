@@ -10170,7 +10170,7 @@
         async function syncLedgerData() {
             const url = getKey('gas_url');
             const token = getKey('gas_token');
-            if (!url || !token) return;
+            if (!url || !token) return false;
 
             try {
                 const res = await fetch(`${url}?token=${token}&action=getAll`);
@@ -10181,10 +10181,12 @@
                     // 同時更新本地變數 (如果有的話)以防萬一
                     rawLedgerData = result.data;
                     renderLedgerList(window.rawLedgerData);
+                    return true;
                 }
             } catch (e) {
                 console.error("同步失敗", e);
             }
+            return false;
         }
 
         // [修正版] 渲染列表 (分組 + 折疊 + 含年份)
@@ -11950,20 +11952,44 @@
             // [新增] 自動展開行程
             autoExpandItinerary();
 
-            // [修正] 延遲執行同步，避免與初始化邏輯衝突，並加入 Log 追蹤
-            setTimeout(() => {
-                console.log("[Init] Start syncing ledger data...");
-                if (typeof syncLedgerData === 'function') {
-                    syncLedgerData().then(() => {
-                        console.log("[Init] Sync data completed.");
-                    }).catch(e => {
-                        console.error("[Init] Sync data failed:", e);
-                    });
-                } else {
-                    console.error("[Init] syncLedgerData function not found!");
-                }
-            }, 1000); // 延遲 1 秒
+            // [修正] 改用靜默重試機制 (Silent Retry) 確保資料同步
+            initLedgerSyncWithRetry();
         });
+
+        // [新增] 靜默重試同步機制
+        // 嘗試同步最多 3 次 (delay: 2s, 5s, 10s)
+        function initLedgerSyncWithRetry(attempt = 0) {
+            const delays = [2000, 5000, 10000]; // 第一次失敗後等 2秒，第二次等 5秒...
+
+            if (typeof syncLedgerData !== 'function') {
+                console.error("[Init] syncLedgerData not found, aborting.");
+                return;
+            }
+
+            console.log(`[Init] Attempting sync (${attempt + 1})...`);
+
+            syncLedgerData().then(success => {
+                if (success) {
+                    console.log("[Init] Sync success!");
+                } else {
+                    console.warn(`[Init] Sync failed or keys missing.`);
+                    if (attempt < delays.length) {
+                        const delay = delays[attempt];
+                        console.log(`[Init] Retrying in ${delay / 1000}s...`);
+                        setTimeout(() => initLedgerSyncWithRetry(attempt + 1), delay);
+                    } else {
+                        console.error("[Init] All sync attempts failed.");
+                    }
+                }
+            }).catch(e => {
+                console.error("[Init] Sync error:", e);
+                // Error case also retries
+                if (attempt < delays.length) {
+                    const delay = delays[attempt];
+                    setTimeout(() => initLedgerSyncWithRetry(attempt + 1), delay);
+                }
+            });
+        }
 
         // [新增] 自動展開行程邏輯
         function autoExpandItinerary() {
