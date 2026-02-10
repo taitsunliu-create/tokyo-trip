@@ -5379,7 +5379,12 @@
                 </svg>
                 <span>隨身 AI 翻譯與助手</span>
             </div>
-            <div style="text-align: right; margin-bottom: 5px; padding-right: 5px;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; padding: 0 5px;">
+                <button onclick="requestNotificationPermission()"
+                    style="border: none; background: none; color: #2563EB; font-size: 0.85rem; cursor: pointer; text-decoration: underline; display: inline-flex; align-items: center;">
+                    🔔 開啟新記事通知
+                </button>
                 <button onclick="resetAppPassword()"
                     style="border: none; background: none; color: #EF4444; font-size: 0.85rem; cursor: pointer; text-decoration: underline; display: inline-flex; align-items: center;">
                     <svg
@@ -10166,25 +10171,114 @@
         // [新增] 確保全域變數存在 (解決 Delete/Edit 找不到資料的問題)
         window.rawLedgerData = [];
 
-        // B. 更新後的同步函式 (加入快取機制)
-        async function syncLedgerData() {
+        // [新增] 請求通知權限
+        function requestNotificationPermission() {
+            if (!("Notification" in window)) {
+                alert("您的瀏覽器不支援通知功能。");
+                return;
+            }
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    alert("通知已開啟！每 60 秒會自動檢查新記事。");
+                    startLedgerPolling();
+                    // 立即同步一次
+                    syncLedgerData(true);
+                } else {
+                    alert("您已拒絕通知權限。");
+                }
+            });
+        }
+
+        // [新增] 啟動輪詢 (每 60 秒)
+        let pollingInterval = null;
+        function startLedgerPolling() {
+            if (pollingInterval) clearInterval(pollingInterval);
+            console.log("[Polling] Started (60s interval)");
+            pollingInterval = setInterval(() => {
+                syncLedgerData(true);
+            }, 60000);
+        }
+
+        // [新增] 檢查並發送通知
+        function checkAndNotifyNewNotes(oldData, newData) {
+            if (!oldData || oldData.length === 0) return; // 第一次載入不通知
+
+            const currentUserName = localStorage.getItem('last_user_name');
+            const oldIds = new Set(oldData.map(i => i.id || i.timestamp));
+
+            newData.forEach(item => {
+                // 只通知 Note 類型
+                if (item.type !== 'note') return;
+
+                const itemId = item.id || item.timestamp;
+                // 如果是新項目 (不在舊清單中)
+                if (!oldIds.has(itemId)) {
+                    // 解析作者
+                    let author = '有人';
+                    try {
+                        if (typeof item.user === 'object') author = item.user.name;
+                        else if (typeof item.user === 'string') {
+                            if (item.user.startsWith('{')) author = JSON.parse(item.user).name;
+                            else author = item.user;
+                        }
+                    } catch (e) { }
+
+                    // 如果作者是自己，不通知
+                    if (author === currentUserName) return;
+
+                    // 發送通知
+                    if (Notification.permission === "granted") {
+                        const noteContent = item.content || item.item || '(圖片)';
+                        // 過濾掉公告標籤
+                        const cleanContent = noteContent.replace(/\[公告\]|#公告/g, '').trim();
+
+                        // 嘗試發送
+                        try {
+                            new Notification(`📝 ${author} 新增了一則記事`, {
+                                body: cleanContent,
+                                icon: 'icon-512.png', // 假設有這個 icon
+                                tag: 'tokyo-trip-note' // 避免重複堆疊
+                            });
+                        } catch (e) {
+                            console.warn("Notification failed", e);
+                        }
+                    }
+                }
+            });
+        }
+
+        // B. 更新後的同步函式 (加入快取機制 + 背景輪詢)
+        async function syncLedgerData(isBackground = false) {
             const url = getKey('gas_url');
             const token = getKey('gas_token');
             if (!url || !token) return false;
+
+            if (!isBackground) {
+                // 可以加個簡單的 loading 狀態，但這裡先保持靜默以免干擾
+            }
 
             try {
                 const res = await fetch(`${url}?token=${token}&action=getAll`);
                 const result = await res.json();
                 if (result.status === 'success') {
+                    const oldData = window.rawLedgerData || [];
+                    const newData = result.data;
+
+                    // [新增] 如果是背景執行，檢查有無新記事
+                    if (isBackground) {
+                        checkAndNotifyNewNotes(oldData, newData);
+                    }
+
                     // [修正] 強制寫入 window 物件，確保 deleteLedgerItem 可以讀取
-                    window.rawLedgerData = result.data;
+                    window.rawLedgerData = newData;
                     // 同時更新本地變數 (如果有的話)以防萬一
-                    rawLedgerData = result.data;
+                    rawLedgerData = newData;
+
                     renderLedgerList(window.rawLedgerData);
                     return true;
                 }
             } catch (e) {
-                console.error("同步失敗", e);
+                if (!isBackground) console.error("同步失敗", e);
             }
             return false;
         }
@@ -11971,6 +12065,10 @@
             syncLedgerData().then(success => {
                 if (success) {
                     console.log("[Init] Sync success!");
+                    // [新增] 如果已授權通知，啟動輪詢
+                    if ("Notification" in window && Notification.permission === "granted") {
+                        startLedgerPolling();
+                    }
                 } else {
                     console.warn(`[Init] Sync failed or keys missing.`);
                     if (attempt < delays.length) {
