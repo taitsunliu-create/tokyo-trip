@@ -8723,6 +8723,9 @@
             setupVoiceButton(); // Init voice listener
             getLocalWeather(); // Fetch local weather on load
             initChecklist(); // Init checklist
+
+            // [Fix] Ensure announcement data is loaded on page load
+            syncLedgerData();
             // [修正] 1:1 指隨心動物理翻頁引擎 (Physics Page Flip)
             let isDragging = false;
             let startX = 0;
