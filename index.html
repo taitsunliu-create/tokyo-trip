@@ -10293,15 +10293,23 @@
                     // 解析作者
                     let author = '有人';
                     try {
-                        if (typeof item.user === 'object') author = item.user.name;
-                        else if (typeof item.user === 'string') {
-                            if (item.user.startsWith('{')) author = JSON.parse(item.user).name;
-                            else author = item.user;
+                        if (item.user && typeof item.user === 'object') {
+                            author = item.user.name || '成員';
+                        } else if (typeof item.user === 'string') {
+                            if (item.user.startsWith('{')) {
+                                const uObj = JSON.parse(item.user);
+                                author = uObj.name || '成員';
+                            } else {
+                                author = item.user;
+                            }
                         }
-                    } catch (e) { }
+                    } catch (e) {
+                        console.warn('Parse user failed', e);
+                    }
 
-                    // 如果作者是自己，不通知
-                    if (author === currentUserName) return;
+                    // 如果作者是自己，不通知 (避免收到自己剛剛發的)
+                    // 如果 currentUserName 為空 (未設定)，則預設會收到通知
+                    if (currentUserName && author === currentUserName) return;
 
                     // 發送通知
                     if (Notification.permission === "granted") {
@@ -10312,9 +10320,9 @@
                         // 嘗試發送
                         try {
                             new Notification(`📝 ${author} 新增了一則記事`, {
-                                body: cleanContent,
+                                body: cleanContent || '分享了一張圖片',
                                 icon: 'icon-512.png',
-                                tag: 'tokyo-trip-note'
+                                tag: `tokyo-trip-note-${itemId}` // [Fix] 使用唯一 tag，避免通知被覆蓋
                             });
                         } catch (e) {
                             console.warn("Notification failed", e);
