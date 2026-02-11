@@ -12368,12 +12368,16 @@
             if (!container || !content) return;
 
             // Filter for announcements (notes containing [公告] or #公告)
-            const announcements = data.filter(item =>
-                item.type === 'note' && (
-                    (item.content && (item.content.includes('[公告]') || item.content.includes('#公告'))) ||
-                    (item.item && (item.item.includes('[公告]') || item.item.includes('#公告')))
-                )
-            ).sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date));
+            const announcements = data.filter(item => {
+                if (item.type !== 'note') return false;
+
+                // [修正] 強制轉為字串，避免純數字導致 .includes 報錯
+                const c = String(item.content || '');
+                const i = String(item.item || '');
+
+                return (c.includes('[公告]') || c.includes('#公告')) ||
+                    (i.includes('[公告]') || i.includes('#公告'));
+            }).sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date));
 
             if (announcements.length === 0) {
                 container.style.display = 'none';
