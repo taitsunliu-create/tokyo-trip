@@ -5374,12 +5374,12 @@
     </div>
 
     <!-- TAB 5: AI 助手 -->
-    <div id="view-ai" class="container" style="height: calc(100vh - 70px); padding-bottom: 10px;">
-        <div style="display: flex; flex-direction: column; gap: 10px; height: 100%;">
+    <div id="view-ai" class="container" style="padding-bottom: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 10px;">
 
             <!-- [Block 2] 隨身 AI 翻譯與助手 (Moved to Top) -->
             <div class="card"
-                style="flex-grow: 1; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0;">
+                style="height: 70vh; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0;">
                 <div class="ai-header" id="ai-modal-title">
                     <!-- 標題 Icon -->
                     <svg class="icon-mini" style="width: 24px; height: 24px; color: #F59E0B;" viewBox="0 0 24 24">
@@ -5527,7 +5527,7 @@
                     <span>相對位置</span>
                 </div>
                 <div style="position: relative;">
-                    <div id="ai-osm-map" style="height: 180px; width: 100%; border-radius: 8px; z-index: 1;"></div>
+                    <div id="ai-osm-map" style="height: 220px; width: 100%; border-radius: 8px; z-index: 1;"></div>
                     <button onclick="locateUserOnMap()" style="
                     position: absolute; 
                     bottom: 10px; 
