@@ -8636,9 +8636,14 @@
             if (osmMap) {
                 // 阻擋所有手勢與滾輪事件冒泡
                 osmMap.style.touchAction = 'none'; // [新增] 避免瀏覽器預設行為干擾
+
+                // ★ 關鍵修正：只阻擋 touchstart，這樣 PageFlip 引擎就不會啟動 (isDragging = false)
+                // 但必須放行 touchmove/touchend，因為 Leaflet 需要在 document 層級監聽拖曳
                 osmMap.addEventListener('touchstart', stopPropagation, { passive: true });
-                osmMap.addEventListener('touchmove', stopPropagation, { passive: true });
-                osmMap.addEventListener('touchend', stopPropagation, { passive: true });
+
+                // osmMap.addEventListener('touchmove', stopPropagation, { passive: true }); // [刪除] 讓 Leaflet 收到
+                // osmMap.addEventListener('touchend', stopPropagation, { passive: true });  // [刪除] 讓 Leaflet 收到
+
                 osmMap.addEventListener('wheel', stopPropagation, { passive: true });
             }
         }
