@@ -11191,8 +11191,9 @@
             } else {
                 filterLedgerView('note');
                 // 填入資料
-                let contentText = item.content || item.item || '';
-
+                // [修正] 強制轉為字串，避免純數字導致 .includes 報錯
+                let rawContent = item.content || item.item || '';
+                let contentText = String(rawContent);
 
                 // [新增] 偵測是否為公告 -> 設定 isAnnouncementMode
                 if (contentText.includes('[公告]') || contentText.includes('#公告')) {
