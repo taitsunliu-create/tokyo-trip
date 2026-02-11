@@ -6971,7 +6971,10 @@
                             city: displayZh,
                             code: code,
                             timezone: localTimezone,
-                            isDay: localIsDay // ★ 重點：這裡多存了一個欄位
+                            isDay: localIsDay,
+                            // [新增] 儲存經緯度供地圖使用
+                            lat: lat,
+                            lon: lon
                         }
                     };
 
@@ -12446,12 +12449,27 @@
             if (!mapContainer) return;
 
             // 預設視野：東京車站
-            const defaultLat = 35.6812;
-            const defaultLng = 139.7671;
+            // 預設視野：東京車站
+            let startLat = 35.6812;
+            let startLng = 139.7671;
+            let startZoom = 13;
+            let hasLocation = false;
+
+            // [新增] 嘗試從天氣快取取得位置
+            if (window.appCache && window.appCache['my_location_combined']) {
+                const d = window.appCache['my_location_combined'].data;
+                if (d.lat && d.lon) {
+                    startLat = d.lat;
+                    startLng = d.lon;
+                    startZoom = 16; // 有定位時放大一點
+                    hasLocation = true;
+                    console.log("[OSM] 使用天氣快取定位:", startLat, startLng);
+                }
+            }
 
             try {
                 // 初始化地圖
-                osmMap = L.map('ai-osm-map').setView([defaultLat, defaultLng], 13);
+                osmMap = L.map('ai-osm-map').setView([startLat, startLng], startZoom);
 
                 // 加入 OpenStreetMap 圖層
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -12460,7 +12478,15 @@
                 }).addTo(osmMap);
 
                 // 加入標記 (可拖曳)
-                osmMarker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(osmMap);
+                osmMarker = L.marker([startLat, startLng], { draggable: true }).addTo(osmMap);
+
+                // 如果有自動定位，顯示 Popup
+                if (hasLocation) {
+                    L.popup()
+                        .setLatLng([startLat, startLng])
+                        .setContent("📍 您在這裡 (自動定位)")
+                        .openOn(osmMap);
+                }
 
                 // 點擊地圖移動標記
                 osmMap.on('click', function (e) {
