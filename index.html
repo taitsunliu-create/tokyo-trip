@@ -5374,12 +5374,13 @@
     </div>
 
     <!-- TAB 5: AI 助手 -->
-    <div id="view-ai" class="container">
-        <!-- ... existing AI Tab content ... -->
-        <div class="card"
-            style="height: calc(100vh - 140px); min-height: 500px; display: flex; flex-direction: column;">
+    <div id="view-ai" class="container"
+        style="display: flex; flex-direction: column; gap: 10px; height: calc(100vh - 70px); padding-bottom: 10px;">
+
+        <!-- [Block 2] 隨身 AI 翻譯與助手 (Moved to Top) -->
+        <div class="card" style="flex-grow: 1; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0;">
             <div class="ai-header" id="ai-modal-title">
-                <!-- 修正 1: 標題 Sparkles 換成 SVG -->
+                <!-- 標題 Icon -->
                 <svg class="icon-mini" style="width: 24px; height: 24px; color: #F59E0B;" viewBox="0 0 24 24">
                     <path
                         d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z">
@@ -5388,27 +5389,7 @@
                 <span>隨身 AI 翻譯與助手</span>
             </div>
 
-            <!-- [新增] OpenStreetMap 容器 -->
-            <div style="position: relative; margin: 0 5px 10px 5px;">
-                <div id="ai-osm-map" style="height: 200px; width: 100%; border-radius: 8px; z-index: 1;"></div>
-                <button onclick="locateUserOnMap()" style="
-                    position: absolute; 
-                    bottom: 10px; 
-                    right: 10px; 
-                    z-index: 400; 
-                    background: white; 
-                    border: 2px solid rgba(0,0,0,0.2); 
-                    border-radius: 4px; 
-                    padding: 5px; 
-                    cursor: pointer;
-                    display: flex; align-items: center; justify-content: center;
-                " title="定位我的位置">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#666" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-                    </svg>
-                </button>
-            </div>
+            <!-- 通知按鈕區 -->
             <div
                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; padding: 0 5px;">
                 <button id="btn-notify-toggle" onclick="toggleNotification()"
@@ -5429,10 +5410,13 @@
                     重設金鑰密碼
                 </button>
             </div>
-            <div class="chat-history" id="chat-history">
+
+            <!-- 對話紀錄 -->
+            <div class="chat-history" id="chat-history" style="flex-grow: 1; overflow-y: auto;">
                 <!-- Welcome Message Bubble (Injected by JS) -->
             </div>
 
+            <!-- 輸入區 -->
             <div class="ai-input-group" id="ai-input-area" style="display: block; margin-top: auto;">
                 <div class="ai-input-wrapper">
                     <input type="text" class="ai-input" id="ai-user-input" placeholder="請輸入內容..."
@@ -5462,7 +5446,6 @@
                                 <g mask="url(#maskTW)">
                                     <rect width="24" height="24" fill="#FE0000" />
                                     <rect width="12" height="12" fill="#000095" />
-                                    <!-- 簡化的青天白日 (同心圓風格) -->
                                     <circle cx="6" cy="6" r="3.5" fill="white" />
                                     <circle cx="6" cy="6" r="2.5" fill="#000095" />
                                     <circle cx="6" cy="6" r="1.5" fill="white" />
@@ -5494,11 +5477,18 @@
                             </svg>
                             中/日翻譯
                         </button>
-                        <button class="btn-mode voice" id="btn-voice-ja">
+                        <button class="btn-mode voice" id="btn-voice-ja" onclick="startVoiceRecognition()">
                             <svg class="icon-sprite">
                                 <use href="#icon-voice"></use>
                             </svg>
                             語音輸入
+                        </button>
+                        <button class="btn-mode voice recording" id="btn-voice-stop" onclick="stopVoiceRecognition()"
+                            style="display: none; background: #EF4444; color: white;">
+                            <svg class="icon" viewBox="0 0 24 24">
+                                <rect x="6" y="6" width="12" height="12"></rect>
+                            </svg>
+                            停止
                         </button>
                         <button class="btn-mode camera" onclick="document.getElementById('img-upload-input').click()">
                             <svg class="icon-sprite">
@@ -5508,14 +5498,50 @@
                         </button>
                         <input type="file" id="img-upload-input" accept="image/*" onchange="handleImageSelect(event)"
                             style="display: none;">
-
                     </div>
+                </div>
+                <!-- [新增] AI 圖片預覽區 -->
+                <div id="ai-image-preview-container" class="horizontal-scroll-container"
+                    style="margin-top: 8px; display: none;">
+                    <!-- 預覽圖卡片會動態加在這裡 -->
                 </div>
             </div>
 
             <button id="btn-back-trans" class="btn-ai-reset" onclick="showAiTranslatorMode()">
                 ↩️ 返回一般模式
             </button>
+        </div>
+
+        <!-- [Block 1] 相對位置 (OpenStreetMap) (Moved to Bottom) -->
+        <div class="card" style="flex-shrink: 0; margin-bottom: 0;">
+            <div class="ai-header" style="margin-bottom: 8px;">
+                <svg class="icon-mini" style="width: 20px; height: 20px; color: #EF4444;" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>相對位置</span>
+            </div>
+            <div style="position: relative;">
+                <div id="ai-osm-map" style="height: 180px; width: 100%; border-radius: 8px; z-index: 1;"></div>
+                <button onclick="locateUserOnMap()" style="
+                    position: absolute; 
+                    bottom: 10px; 
+                    right: 10px; 
+                    z-index: 400; 
+                    background: white; 
+                    border: 2px solid rgba(0,0,0,0.2); 
+                    border-radius: 4px; 
+                    padding: 5px; 
+                    cursor: pointer;
+                    display: flex; align-items: center; justify-content: center;
+                " title="定位我的位置">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#666" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 
