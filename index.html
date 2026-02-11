@@ -8630,6 +8630,17 @@
                 weatherModalBox.addEventListener('touchend', stopPropagation, { passive: true });
                 weatherModalBox.addEventListener('wheel', stopPropagation, { passive: true });
             }
+
+            // 3. [新增] 針對 OSM 地圖容器 (防止拖曳地圖時觸發換頁)
+            const osmMap = document.getElementById('ai-osm-map');
+            if (osmMap) {
+                // 阻擋所有手勢與滾輪事件冒泡
+                osmMap.style.touchAction = 'none'; // [新增] 避免瀏覽器預設行為干擾
+                osmMap.addEventListener('touchstart', stopPropagation, { passive: true });
+                osmMap.addEventListener('touchmove', stopPropagation, { passive: true });
+                osmMap.addEventListener('touchend', stopPropagation, { passive: true });
+                osmMap.addEventListener('wheel', stopPropagation, { passive: true });
+            }
         }
 
         // 確保頁面載入完成後執行綁定
