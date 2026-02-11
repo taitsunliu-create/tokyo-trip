@@ -8630,16 +8630,6 @@
                 weatherModalBox.addEventListener('touchend', stopPropagation, { passive: true });
                 weatherModalBox.addEventListener('wheel', stopPropagation, { passive: true });
             }
-
-            // 3. [新增] 針對 OpenStreetMap 地圖區域 (#ai-osm-map)
-            // 防止拖曳地圖時觸發整頁的左右滑動切換
-            const mapContainer = document.getElementById('ai-osm-map');
-            if (mapContainer) {
-                mapContainer.addEventListener('touchstart', stopPropagation, { passive: true });
-                mapContainer.addEventListener('touchmove', stopPropagation, { passive: true });
-                mapContainer.addEventListener('touchend', stopPropagation, { passive: true });
-                mapContainer.addEventListener('wheel', stopPropagation, { passive: true });
-            }
         }
 
         // 確保頁面載入完成後執行綁定
