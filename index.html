@@ -10692,7 +10692,9 @@
                         </div>`;
                     } else {
                         // 筆記模式
-                        let noteContent = item.content || item.item || '無內容';
+                        // [修正] 強制轉為字串，避免純數字導致 .includes 報錯
+                        let rawContent = item.content || item.item || '無內容';
+                        let noteContent = String(rawContent);
                         const currentUserName = localStorage.getItem('last_user_name');
 
                         // [新增] 識別與顯示公告圖示
@@ -10770,7 +10772,7 @@
                                 </div>
                                 <div style="font-size: 0.75rem; color: #9ca3af; display:flex; align-items:center;">${timeDisplay}</div>
                             </div>
-                            <div style="font-size: 1rem; color: #374151; line-height: 1.6; white-space: pre-wrap;">${noteContent}</div>
+                            <div style="font-size: 1rem; color: #374151; line-height: 1.6; white-space: pre-wrap; word-break: break-word;">${noteContent}</div>
                             ${imagesHtml}
                             ${actionButtons}
                         </div>`;
