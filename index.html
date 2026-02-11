@@ -12346,6 +12346,152 @@
         }
 
     </script>
+    <!-- [新增] 輕量版視覺回饋工具 (Agentation Alternative for Vanilla JS) -->
+    <script>
+        (function () {
+            // 1. 啟動條件：網址帶有 ?dev=true 或 localStorage 設定為 true
+            // 您可以在瀏覽器網址列加上 ?dev=true 來開啟
+            // 或者在 Console 輸入 localStorage.setItem('isDev', 'true') 然後重新整理
+            const isDev = new URLSearchParams(window.location.search).has('dev') || localStorage.getItem('isDev') === 'true';
+
+            if (!isDev) return;
+
+            console.log("🛠️ Dev Mode: Visual Inspector Enabled");
+
+            // 建立控制按鈕
+            const btn = document.createElement('button');
+            btn.innerText = '🔍 Inspector Off';
+            btn.style.position = 'fixed';
+            btn.style.bottom = '10px';
+            btn.style.left = '10px';
+            btn.style.zIndex = '999999';
+            btn.style.padding = '8px 12px';
+            btn.style.background = '#333';
+            btn.style.color = '#fff';
+            btn.style.border = '1px solid #555';
+            btn.style.borderRadius = '4px';
+            btn.style.cursor = 'pointer';
+            btn.style.fontFamily = 'monospace';
+            document.body.appendChild(btn);
+
+            let isActive = false;
+            let hoveredEl = null;
+
+            // 建立標示框
+            const outline = document.createElement('div');
+            outline.style.position = 'fixed';
+            outline.style.border = '2px solid #EF4444';
+            outline.style.background = 'rgba(239, 68, 68, 0.1)';
+            outline.style.pointerEvents = 'none'; // 讓滑鼠穿透
+            outline.style.zIndex = '999998';
+            outline.style.display = 'none';
+            outline.style.transition = 'all 0.1s ease'; // 平滑移動
+            document.body.appendChild(outline);
+
+            // 建立提示 Toast
+            const toast = document.createElement('div');
+            toast.style.position = 'fixed';
+            toast.style.top = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.background = 'rgba(0,0,0,0.8)';
+            toast.style.color = '#fff';
+            toast.style.padding = '8px 16px';
+            toast.style.borderRadius = '20px';
+            toast.style.zIndex = '999999';
+            toast.style.display = 'none';
+            toast.style.fontSize = '12px';
+            document.body.appendChild(toast);
+
+            function showToast(msg) {
+                toast.innerText = msg;
+                toast.style.display = 'block';
+                setTimeout(() => { toast.style.display = 'none'; }, 2000);
+            }
+
+            // 開關切換
+            btn.onclick = () => {
+                isActive = !isActive;
+                btn.innerText = isActive ? '🔍 Inspector ON' : '🔍 Inspector Off';
+                btn.style.background = isActive ? '#EF4444' : '#333';
+                if (!isActive) {
+                    outline.style.display = 'none';
+                    hoveredEl = null;
+                }
+            };
+
+            // 滑鼠移動：移動紅框
+            document.addEventListener('mousemove', (e) => {
+                if (!isActive) return;
+
+                const el = document.elementFromPoint(e.clientX, e.clientY);
+                if (!el || el === outline || el === btn || el === toast) return;
+
+                if (hoveredEl !== el) {
+                    hoveredEl = el;
+                    const rect = el.getBoundingClientRect();
+                    outline.style.display = 'block';
+                    outline.style.top = rect.top + 'px';
+                    outline.style.left = rect.left + 'px';
+                    outline.style.width = rect.width + 'px';
+                    outline.style.height = rect.height + 'px';
+                }
+            });
+
+            // 點擊：複製 Selector
+            document.addEventListener('click', (e) => {
+                if (!isActive) return;
+                if (e.target === btn) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const el = e.target;
+                const selector = getCssSelector(el);
+
+                // 複製到剪貼簿
+                navigator.clipboard.writeText(selector).then(() => {
+                    showToast(`Copied: ${selector}`);
+                    console.log(`[Inspector] Selected:`, el, `\nSelector: ${selector}`);
+                }).catch(err => {
+                    console.error('Copy failed', err);
+                    showToast(`Copy Failed: ${selector}`);
+                });
+
+                // 閃爍效果
+                outline.style.background = 'rgba(239, 68, 68, 0.4)';
+                setTimeout(() => {
+                    outline.style.background = 'rgba(239, 68, 68, 0.1)';
+                }, 200);
+            }, true); // Use capture phase to intercept clicks first
+
+            // 產生唯一 Selector 的輔助函式
+            function getCssSelector(el) {
+                if (!(el instanceof Element)) return;
+                const path = [];
+                while (el.nodeType === Node.ELEMENT_NODE) {
+                    let selector = el.nodeName.toLowerCase();
+                    if (el.id) {
+                        selector += '#' + el.id;
+                        path.unshift(selector);
+                        break; // ID 是唯一的，找到就夠了
+                    } else {
+                        let sib = el, nth = 1;
+                        while (sib = sib.previousElementSibling) {
+                            if (sib.nodeName.toLowerCase() == selector)
+                                nth++;
+                        }
+                        if (nth != 1)
+                            selector += ":nth-of-type(" + nth + ")";
+                    }
+                    path.unshift(selector);
+                    el = el.parentNode;
+                }
+                return path.join(" > ");
+            }
+
+        })();
+    </script>
 </body>
 
 <style>
