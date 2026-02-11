@@ -12219,6 +12219,11 @@
 
             // [修正] 改用靜默重試機制 (Silent Retry) 確保資料同步
             initLedgerSyncWithRetry();
+
+            // [新增] 啟動時立即檢查登入狀態 (持久化)
+            if (typeof checkUserSession === 'function') {
+                checkUserSession();
+            }
         });
 
         // [新增] 靜默重試同步機制
