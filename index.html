@@ -12589,6 +12589,21 @@
                         renderOtherUserMarker(loc);
                     });
 
+                    // [新增] 自動調整視野以顯示所有使用者
+                    const bounds = [];
+                    // 1. 加入自己的位置
+                    if (osmMarker) bounds.push(osmMarker.getLatLng());
+                    // 2. 加入其他人的位置
+                    Object.values(otherUserMarkers).forEach(m => bounds.push(m.getLatLng()));
+
+                    if (bounds.length > 0) {
+                        try {
+                            osmMap.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+                        } catch (e) {
+                            console.warn("[OSM] fitBounds error:", e);
+                        }
+                    }
+
                 }).catch(e => console.error("[Location] Fetch failed:", e));
         };
 
@@ -12676,6 +12691,9 @@
                     maxZoom: 19,
                     attribution: '© OpenStreetMap'
                 }).addTo(osmMap);
+
+                // [新增] 加入比例尺
+                L.control.scale().addTo(osmMap);
 
                 // 加入標記 (不可拖曳)
                 const startIcon = getAvatarIcon();
