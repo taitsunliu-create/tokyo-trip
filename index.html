@@ -6976,7 +6976,7 @@
 
                     // [新增] 即時更新 AI 地圖 (如果地圖已經初始化的話)
                     if (window.updateMapLocation) {
-                        window.updateMapLocation(lat, lon);
+                        window.updateMapLocation(lat, lon, Date.now());
                     }
 
                     // ★★★ [新增] 若目前沒有任何行程被打開，就直接套用這裡的日夜特效
@@ -12484,9 +12484,12 @@
 
                 // 如果有自動定位，顯示 Popup
                 if (hasLocation) {
+                    const userName = localStorage.getItem('last_user_name') || '使用者';
+                    const timeStr = getTimeAgo(window.appCache['my_location_combined'].timestamp || Date.now());
+
                     L.popup()
                         .setLatLng([startLat, startLng])
-                        .setContent("📍 您在這裡 (自動定位)")
+                        .setContent(`📍 ${userName} (${timeStr}在這裡)`)
                         .openOn(osmMap);
                 }
 
@@ -12496,11 +12499,23 @@
             }
         }
 
+        // [新增] 時間計算 helper
+        function getTimeAgo(timestamp) {
+            if (!timestamp) return "剛剛";
+            const diff = Date.now() - timestamp;
+            const minutes = Math.floor(diff / 60000);
+            if (minutes < 1) return "剛剛";
+            if (minutes < 60) return `${minutes}分鐘前`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}小時前`;
+            return `${Math.floor(hours / 24)}天前`;
+        }
+
         // [新增] 全域更新地圖位置函式 (供天氣模組呼叫)
-        window.updateMapLocation = function (lat, lng) {
+        window.updateMapLocation = function (lat, lng, timestamp) {
             if (!osmMap) return; // 地圖還沒初始化，下次 initOSM 會自己抓 cache
 
-            console.log("[OSM] updateMapLocation called:", lat, lng);
+            console.log("[OSM] updateMapLocation called:", lat, lng, timestamp);
 
             try {
                 // 1. 移動視野
@@ -12514,9 +12529,13 @@
                 }
 
                 // 3. 顯示 Popup
+                const userName = localStorage.getItem('last_user_name') || '使用者';
+                const timeStr = getTimeAgo(timestamp || Date.now());
+                const popupContent = `📍 ${userName} (${timeStr}在這裡)`;
+
                 L.popup()
                     .setLatLng([lat, lng])
-                    .setContent("📍 您在這裡 (自動定位)")
+                    .setContent(popupContent)
                     .openOn(osmMap);
 
 
@@ -12547,12 +12566,14 @@
                     const lng = position.coords.longitude;
 
                     // Update Map
-                    window.updateMapLocation(lat, lng);
+                    const now = Date.now();
+                    window.updateMapLocation(lat, lng, now);
 
                     // Update Cache
                     if (window.appCache && window.appCache['my_location_combined']) {
                         window.appCache['my_location_combined'].data.lat = lat;
                         window.appCache['my_location_combined'].data.lon = lng;
+                        window.appCache['my_location_combined'].timestamp = now; // Save timestamp
                     }
 
                     // Stop Animation
