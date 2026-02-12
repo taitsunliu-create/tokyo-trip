@@ -5525,6 +5525,18 @@
                         <circle cx="12" cy="10" r="3"></circle>
                     </svg>
                     <span>相對位置</span>
+                    <button onclick="refreshMapLocation()" style="
+                        background: none; border: none; cursor: pointer; padding: 4px; 
+                        margin-left: auto; display: flex; align-items: center; justify-content: center;
+                        color: #6B7280; transition: color 0.2s;
+                    " title="重新定位">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 4v6h-6"></path>
+                            <path d="M1 20v-6h6"></path>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                    </button>
                 </div>
                 <div style="position: relative;">
                     <div id="ai-osm-map" style="height: 220px; width: 100%; border-radius: 8px; z-index: 1;"></div>
@@ -12467,7 +12479,8 @@
                 }).addTo(osmMap);
 
                 // 加入標記 (可拖曳)
-                osmMarker = L.marker([startLat, startLng], { draggable: true }).addTo(osmMap);
+                // 加入標記 (不可拖曳)
+                osmMarker = L.marker([startLat, startLng], { draggable: false }).addTo(osmMap);
 
                 // 如果有自動定位，顯示 Popup
                 if (hasLocation) {
@@ -12502,7 +12515,7 @@
                 if (osmMarker) {
                     osmMarker.setLatLng([lat, lng]);
                 } else {
-                    osmMarker = L.marker([lat, lng], { draggable: true }).addTo(osmMap);
+                    osmMarker = L.marker([lat, lng], { draggable: false }).addTo(osmMap);
                 }
 
                 // 3. 顯示 Popup
@@ -12510,6 +12523,43 @@
                     .setLatLng([lat, lng])
                     .setContent("📍 您在這裡 (自動定位)")
                     .openOn(osmMap);
+
+
+
+                // [新增] 重新定位功能
+                window.refreshMapLocation = function () {
+                    if (!osmMap) return;
+
+                    // 顯示簡單的 Loading
+                    const btn = document.querySelector('.btn-refresh-map svg');
+                    if (btn) btn.style.animation = 'spin 1s linear infinite';
+
+                    if ("geolocation" in navigator) {
+                        navigator.geolocation.getCurrentPosition(position => {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+
+                            // 更新地圖
+                            window.updateMapLocation(lat, lng);
+
+                            // 更新天氣暫存 (選擇性)
+                            if (window.appCache && window.appCache['my_location_combined']) {
+                                window.appCache['my_location_combined'].data.lat = lat;
+                                window.appCache['my_location_combined'].data.lon = lng;
+                            }
+
+                            // 移除動畫
+                            if (btn) btn.style.animation = '';
+
+                        }, error => {
+                            alert("無法重新取得位置，請確認 GPS 權限。");
+                            if (btn) btn.style.animation = '';
+                        });
+                    } else {
+                        alert("瀏覽器不支援定位。");
+                        if (btn) btn.style.animation = '';
+                    }
+                };
 
             } catch (e) {
                 console.error("[OSM] Update location failed:", e);
