@@ -6158,7 +6158,7 @@
         // 用於 Google Places (分享位置時抓地標名稱)
         const encryptedPlacesKey = "U2FsdGVkX1/8kyFaxEPoelwm4PAoa+8/5wkmP0ob/Vhfkg6S+i+sN8Vv98Hb4wn8Xs33BPKC/OthWwUus2i7fQ==";
         // [安插在其他 ENC_ 變數群組中]
-        const encryptedGasUrl = "U2FsdGVkX18EA8uUdoOzW15ZohySIYIGuYU0P1H0ccmeUliIulTPDQtUgwdb2mTOo9a9UazKGSMqAoSnRu2+erBWzOP5WoYAzX/iUdapUMWXj2rYqahij7MUhwAQKfv0agb0fCfYWqvJyHJ0XGUpyDbGGcyM09qCLSA3NLg9rqEV2FBCnbs66s0Te9T7SMl9"; // 填入您的 URL 密文
+        const encryptedGasUrl = "U2FsdGVkX18ZFymu1/eVjAQzIzQZfMa4S+jdhFhxrbkmrxOt6DPJvb0dJi8FXiEQrd9ESxrCuojw7hw02iQy5pVYC83KiZiQPwVVNMXBnHcSQUWCebc4SBEfTRYwFHYW2hIeN/mgrbMUO8bTgIzBX8nHlqhc7Sa5aRVn5Mcl2Hs9BWupcApYEByoj/Sik2X4"; // 填入您的 URL 密文
         const encryptedGasToken = "U2FsdGVkX18Ai8D1RX8NE51l8+0dsJK8BALcZZmlq78="; // 填入您的 Token 密文
 
         // [安插在其他 API_KEY 全域變數群組中]
@@ -10985,6 +10985,7 @@
 
             // 構建 JSON 字串 (給後端用)
             const userInfo = JSON.stringify({
+                id: localStorage.getItem('user_id') || 'guest', // [New] 保留原始 User ID
                 name: name,
                 avatar: avatar
             });
@@ -12576,7 +12577,12 @@
 
                     data.data.forEach(item => {
                         if (!item.lat || !item.lon) return;
-                        const uid = String(item.id);
+
+                        // [修改] 優先從 user 物件中取得 id (因為 item.id 現在是 Event ID)
+                        let uid = String(item.id);
+                        if (item.user && item.user.id) {
+                            uid = String(item.user.id);
+                        }
                         if (uid === String(myUserId)) return;
 
                         const time = new Date(item.timestamp).getTime();
@@ -12639,7 +12645,7 @@
                 window.sendLocationToBackend(lat, lon);
             }
             if (osmMap) window.fetchAndRenderLocations();
-        }, 60000);
+        }, 300000); // [修改] 改為 5 分鐘
 
         function initOSM() {
             // 防止重複初始化
