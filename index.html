@@ -12482,15 +12482,11 @@
                 const startIcon = getAvatarIcon();
                 osmMarker = L.marker([startLat, startLng], { icon: startIcon, draggable: false }).addTo(osmMap);
 
-                // 如果有自動定位，顯示 Popup
+                // 如果有自動定位，綁定 Popup (但不自動顯示)
                 if (hasLocation) {
                     const userName = localStorage.getItem('last_user_name') || '使用者';
                     const timeStr = getTimeAgo(window.appCache['my_location_combined'].timestamp || Date.now());
-
-                    L.popup()
-                        .setLatLng([startLat, startLng])
-                        .setContent(`📍 ${userName} (${timeStr}在這裡)`)
-                        .openOn(osmMap);
+                    osmMarker.bindPopup(`${userName} (${timeStr}在這裡)`);
                 }
 
                 console.log("[OSM] Map initialized.");
@@ -12553,15 +12549,13 @@
                     osmMarker = L.marker([lat, lng], { icon: avatarIcon, draggable: false }).addTo(osmMap);
                 }
 
-                // 3. 顯示 Popup
+                // 3. 設定 Popup (點擊顯示，點擊地圖其他處關閉)
                 const userName = localStorage.getItem('last_user_name') || '使用者';
                 const timeStr = getTimeAgo(timestamp || Date.now());
-                const popupContent = `📍 ${userName} (${timeStr}在這裡)`;
+                const popupContent = `${userName} (${timeStr}在這裡)`;
 
-                L.popup()
-                    .setLatLng([lat, lng])
-                    .setContent(popupContent)
-                    .openOn(osmMap);
+                // 綁定 Popup 到標記上，不自動開啟
+                osmMarker.bindPopup(popupContent);
 
 
             } catch (e) {
