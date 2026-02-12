@@ -12556,10 +12556,19 @@
             // 這裡採用最簡單的 hook 方式：
 
             const originalSwitchTab = window.switchTab;
-            window.switchTab = function (tabId) {
-                if (originalSwitchTab) originalSwitchTab(tabId);
+            window.switchTab = function (arg) {
+                if (originalSwitchTab) originalSwitchTab(arg);
 
-                if (tabId === 'ai') {
+                // 判斷是否切換到 AI 分頁
+                // 1. arg 是字串 'ai'
+                // 2. arg 是 DOM 元素且 data-target="view-ai"
+                let isAi = (arg === 'ai');
+                if (!isAi && arg && arg.getAttribute) {
+                    const target = arg.getAttribute('data-target');
+                    if (target === 'view-ai') isAi = true;
+                }
+
+                if (isAi) {
                     // 延遲一點點確保 display: block 已套用
                     setTimeout(() => {
                         initOSM();
