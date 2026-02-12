@@ -12688,6 +12688,10 @@
                     osmMarker.bindPopup(`${userName} (${timeStr}在這裡)`);
                 }
 
+                if (typeof window.fetchAndRenderLocations === 'function') {
+                    window.fetchAndRenderLocations();
+                }
+
                 console.log("[OSM] Map initialized.");
             } catch (e) {
                 console.error("[OSM] Init failed:", e);
