@@ -6999,6 +6999,11 @@
                         window.updateMapLocation(lat, lon, Date.now());
                     }
 
+                    // [新增] 立即傳送位置給後端 (無需等待地圖重整)
+                    if (typeof window.sendLocationToBackend === 'function') {
+                        window.sendLocationToBackend(lat, lon);
+                    }
+
                     // ★★★ [新增] 若目前沒有任何行程被打開，就直接套用這裡的日夜特效
                     /*if (!document.querySelector('.timeline.show')) {
                         const header = document.querySelector('header');
