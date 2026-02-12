@@ -12464,8 +12464,8 @@
 
         // --- Location Sharing & Incognito Logic ---
         const CONFIG = {
-            GAS_URL: "https://script.google.com/macros/s/AKfycbzTf4C8j3z_Wd9rS_Jc-w7k8l0n-E5o5p7q9r1s3u5v7w9x1y3z/exec",
-            AUTH_TOKEN: "GAS_TOKEN_FCWI"
+            get GAS_URL() { return getKey('gas_url'); },
+            get AUTH_TOKEN() { return getKey('gas_token'); }
         };
 
         let isIncognito = localStorage.getItem('is_incognito') === 'true';
