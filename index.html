@@ -6978,6 +6978,11 @@
                         }
                     };
 
+                    // [新增] 即時更新 AI 地圖 (如果地圖已經初始化的話)
+                    if (window.updateMapLocation) {
+                        window.updateMapLocation(lat, lon);
+                    }
+
                     // ★★★ [新增] 若目前沒有任何行程被打開，就直接套用這裡的日夜特效
                     /*if (!document.querySelector('.timeline.show')) {
                         const header = document.querySelector('header');
@@ -12498,6 +12503,34 @@
                 console.error("[OSM] Init failed:", e);
             }
         }
+
+        // [新增] 全域更新地圖位置函式 (供天氣模組呼叫)
+        window.updateMapLocation = function (lat, lng) {
+            if (!osmMap) return; // 地圖還沒初始化，下次 initOSM 會自己抓 cache
+
+            console.log("[OSM] updateMapLocation called:", lat, lng);
+
+            try {
+                // 1. 移動視野
+                osmMap.setView([lat, lng], 16);
+
+                // 2. 移動標記
+                if (osmMarker) {
+                    osmMarker.setLatLng([lat, lng]);
+                } else {
+                    osmMarker = L.marker([lat, lng], { draggable: true }).addTo(osmMap);
+                }
+
+                // 3. 顯示 Popup
+                L.popup()
+                    .setLatLng([lat, lng])
+                    .setContent("📍 您在這裡 (自動定位)")
+                    .openOn(osmMap);
+
+            } catch (e) {
+                console.error("[OSM] Update location failed:", e);
+            }
+        };
 
         function locateUserOnMap() {
             if (!osmMap) {
