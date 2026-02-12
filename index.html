@@ -12490,11 +12490,6 @@
                         .openOn(osmMap);
                 }
 
-                // 點擊地圖移動標記
-                osmMap.on('click', function (e) {
-                    osmMarker.setLatLng(e.latlng);
-                });
-
                 console.log("[OSM] Map initialized.");
             } catch (e) {
                 console.error("[OSM] Init failed:", e);
@@ -12525,44 +12520,55 @@
                     .openOn(osmMap);
 
 
-
-                // [新增] 重新定位功能
-                window.refreshMapLocation = function () {
-                    if (!osmMap) return;
-
-                    // 顯示簡單的 Loading
-                    const btn = document.querySelector('.btn-refresh-map svg');
-                    if (btn) btn.style.animation = 'spin 1s linear infinite';
-
-                    if ("geolocation" in navigator) {
-                        navigator.geolocation.getCurrentPosition(position => {
-                            const lat = position.coords.latitude;
-                            const lng = position.coords.longitude;
-
-                            // 更新地圖
-                            window.updateMapLocation(lat, lng);
-
-                            // 更新天氣暫存 (選擇性)
-                            if (window.appCache && window.appCache['my_location_combined']) {
-                                window.appCache['my_location_combined'].data.lat = lat;
-                                window.appCache['my_location_combined'].data.lon = lng;
-                            }
-
-                            // 移除動畫
-                            if (btn) btn.style.animation = '';
-
-                        }, error => {
-                            alert("無法重新取得位置，請確認 GPS 權限。");
-                            if (btn) btn.style.animation = '';
-                        });
-                    } else {
-                        alert("瀏覽器不支援定位。");
-                        if (btn) btn.style.animation = '';
-                    }
-                };
-
             } catch (e) {
                 console.error("[OSM] Update location failed:", e);
+            }
+        };
+
+        // [New] Refresh Logic
+        window.refreshMapLocation = function () {
+            if (!osmMap) return;
+
+            // Loading Animation
+            const btn = document.querySelector('.btn-refresh-map svg');
+            if (btn) btn.style.transformOrigin = 'center';
+            if (btn) btn.style.animation = 'spin 1s linear infinite';
+            // Add keyframes if not exists (or rely on existing) - adding inline style for safety
+            if (!document.getElementById('style-spin')) {
+                const style = document.createElement('style');
+                style.id = 'style-spin';
+                style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+                document.head.appendChild(style);
+            }
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    // Update Map
+                    window.updateMapLocation(lat, lng);
+
+                    // Update Cache
+                    if (window.appCache && window.appCache['my_location_combined']) {
+                        window.appCache['my_location_combined'].data.lat = lat;
+                        window.appCache['my_location_combined'].data.lon = lng;
+                    }
+
+                    // Stop Animation
+                    if (btn) btn.style.animation = '';
+
+                }, error => {
+                    alert("無法重新取得位置，請確認 GPS 權限。");
+                    if (btn) btn.style.animation = '';
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                });
+            } else {
+                alert("瀏覽器不支援定位。");
+                if (btn) btn.style.animation = '';
             }
         };
 
