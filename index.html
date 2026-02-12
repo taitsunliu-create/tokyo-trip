@@ -6158,7 +6158,7 @@
         // 用於 Google Places (分享位置時抓地標名稱)
         const encryptedPlacesKey = "U2FsdGVkX1/8kyFaxEPoelwm4PAoa+8/5wkmP0ob/Vhfkg6S+i+sN8Vv98Hb4wn8Xs33BPKC/OthWwUus2i7fQ==";
         // [安插在其他 ENC_ 變數群組中]
-        const encryptedGasUrl = "U2FsdGVkX18EA8uUdoOzW15ZohySIYIGuYU0P1H0ccmeUliIulTPDQtUgwdb2mTOo9a9UazKGSMqAoSnRu2+erBWzOP5WoYAzX/iUdapUMWXj2rYqahij7MUhwAQKfv0agb0fCfYWqvJyHJ0XGUpyDbGGcyM09qCLSA3NLg9rqEV2FBCnbs66s0Te9T7SMl9"; // 填入您的 URL 密文
+        const encryptedGasUrl = "U2FsdGVkX1/glSwWeYkcqkcCFWjdHcNPoUqFTxNL50onBViEwI2IzdYFQ4Q5sa46arAN0aItxWBJaIiHOmBqNeawEtY2CxeJVCbJ0c0po+VFnmoMZAJAeK3IN2vpSLeZeWnL/5ZwXRgDIBQ3P6XqJg9jqPT7MDja3RHu50ZQqo5mkTtSzOxyc79wsk1wfwBT"; // 填入您的 URL 密文
         const encryptedGasToken = "U2FsdGVkX18Ai8D1RX8NE51l8+0dsJK8BALcZZmlq78="; // 填入您的 Token 密文
 
         // [安插在其他 API_KEY 全域變數群組中]
@@ -12692,8 +12692,8 @@
                     attribution: '© OpenStreetMap'
                 }).addTo(osmMap);
 
-                // [新增] 加入比例尺
-                L.control.scale().addTo(osmMap);
+                // [新增] 加入比例尺 (右上角)
+                L.control.scale({ position: 'topright' }).addTo(osmMap);
 
                 // 加入標記 (不可拖曳)
                 const startIcon = getAvatarIcon();
