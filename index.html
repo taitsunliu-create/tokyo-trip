@@ -12648,6 +12648,24 @@
             } else {
                 const marker = L.marker([lat, lng], { icon: icon }).addTo(osmMap);
                 marker.bindPopup(`${name} (${timeStr}在這裡)`);
+
+                // [新增] 長按 2 秒導航功能
+                let pressTimer;
+                const startPress = () => {
+                    pressTimer = setTimeout(() => {
+                        showNavModal(name, lat, lng);
+                    }, 2000);
+                };
+                const cancelPress = () => {
+                    if (pressTimer) clearTimeout(pressTimer);
+                };
+
+                marker.on('mousedown', startPress);
+                marker.on('touchstart', startPress);
+                marker.on('mouseup', cancelPress);
+                marker.on('touchend', cancelPress);
+                marker.on('dragstart', cancelPress); // 地圖移動時取消
+
                 otherUserMarkers[uid] = marker;
             }
         }
@@ -13148,5 +13166,53 @@
         pointer-events: none;
     }
 </style>
+
+<!-- [新增] 導航確認 Modal -->
+<div id="nav-confirm-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-box" style="text-align: center; max-width: 300px;">
+        <h3 style="margin-top: 0; color: #1F2937;">前往夥伴位置</h3>
+        <p>是否開啟 Google 地圖導航至 <span id="nav-target-name" style="font-weight: bold; color: #2563EB;"></span>？</p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
+            <button onclick="closeNavModal()" style="
+                    padding: 10px;
+                    border: 1px solid #D1D5DB;
+                    background: white;
+                    color: #4B5563;
+                    border-radius: 8px;
+                    font-weight: 500;
+                ">取消</button>
+            <button onclick="confirmNav()" style="
+                    padding: 10px;
+                    border: none;
+                    background: #2563EB;
+                    color: white;
+                    border-radius: 8px;
+                    font-weight: 500;
+                ">前往導航</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // [新增] 導航確認視窗功能
+    let currentNavUrl = '';
+    function showNavModal(name, lat, lng) {
+        document.getElementById('nav-target-name').innerText = name;
+        currentNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+        document.getElementById('nav-confirm-modal').style.display = 'flex';
+    }
+
+    function closeNavModal() {
+        document.getElementById('nav-confirm-modal').style.display = 'none';
+    }
+
+    function confirmNav() {
+        if (currentNavUrl) {
+            window.open(currentNavUrl, '_blank');
+        }
+        closeNavModal();
+    }
+</script>
 
 </html>
