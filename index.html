@@ -12701,17 +12701,6 @@
                 icon = L.divIcon({
                     className: 'leader-line-marker',
                     html: `
-                        <div class="leader-dot" style="background-color: #10B981;"></div>
-                        <div class="leader-line" style="
-                            height: ${lineLen}px; 
-                            transform: rotate(${rotateDeg + 180}deg); /* 線往下指到點 */
-                            background-color: #10B981;
-                        "></div>
-                        <div class="leader-avatar" style="
-                            transform: translate(-50%, -50%) rotate(${rotateDeg}deg) translate(0, -${lineLen}px) rotate(${-rotateDeg}deg);
-                            /* 這邊算數學太複雜，改用絕對定位方式 */
-                        "></div>
-                        
                         <!-- 簡化版 Leader Line HTML -->
                         <div style="position:absolute; top:0; left:0;">
                              <!-- 點 -->
