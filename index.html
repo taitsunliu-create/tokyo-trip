@@ -12612,25 +12612,34 @@
                 }).catch(e => console.error("[Location] Fetch failed:", e));
         };
 
-        // [新增] 避免重疊 Jitter 函式
-        function addJitter(lat, lng) {
-            // 檢查是否與自己重疊
+        // [新增] 檢查重疊並計算 Leader Line 樣式
+        function getOverlapStyle(lat, lng, uid) {
+            let overlayCount = 0;
+            let myDist = 9999;
+
+            // 1. Check distance to Self
             if (osmMarker) {
                 const myPos = osmMarker.getLatLng();
-                const dist = Math.sqrt(Math.pow(lat - myPos.lat, 2) + Math.pow(lng - myPos.lng, 2));
-                if (dist < 0.00005) { // 約 5 公尺內
-                    return [lat + (Math.random() - 0.5) * 0.0002, lng + (Math.random() - 0.5) * 0.0002];
+                myDist = Math.sqrt(Math.pow(lat - myPos.lat, 2) + Math.pow(lng - myPos.lng, 2));
+                if (myDist < 0.0001) { // 非常靠近 (<10m)
+                    overlayCount++;
                 }
             }
-            // 檢查是否與其他夥伴重疊
-            for (let uid in otherUserMarkers) {
-                const otherPos = otherUserMarkers[uid].getLatLng();
-                const dist = Math.sqrt(Math.pow(lat - otherPos.lat, 2) + Math.pow(lng - otherPos.lng, 2));
-                if (dist < 0.00005) {
-                    return [lat + (Math.random() - 0.5) * 0.0002, lng + (Math.random() - 0.5) * 0.0002];
-                }
+
+            // 2. Check overlap with other partners (simple check)
+            // 這裡簡化處理：如果有重疊，就統一往上飄。如果有多人重疊，可以依 UID hash 稍微錯開角度。
+
+            if (overlayCount > 0) {
+                // 有重疊，開啟 Leader Line 模式
+                // 計算偏移角度：如果有重疊，預設往右上方 45度
+                // 如果需要區分多人，可以用 uid 最後一碼簡單做 hash
+                const angleStep = (uid.charCodeAt(uid.length - 1) % 3 - 1) * 30; // -30, 0, +30
+                const baseAngle = -45 + angleStep; // 往右上飄 (Leaflet 座標系 CSS transform 比較直觀)
+
+                return { isOverlap: true, angle: baseAngle, dist: 50 }; // 距離 50px
             }
-            return [lat, lng];
+
+            return { isOverlap: false };
         }
 
         function renderOtherUserMarker(loc) {
@@ -12643,36 +12652,99 @@
             const lng = Number(loc.lon);
             const timeStr = getTimeAgo(loc.time);
 
-            // [新增] 避免重疊 Jitter 處理
-            const jittered = addJitter(lat, lng);
-            const finalLat = jittered[0];
-            const finalLng = jittered[1];
+            // [修正] 改用 Leader Line 邏輯，移除 addJitter
+            const overlapInfo = getOverlapStyle(lat, lng, uid);
 
-            const icon = L.divIcon({
-                className: 'other-user-marker',
-                html: `<div style="
-                    background: white; 
-                    border: 2px solid #10B981; 
-                    border-radius: 50%; 
-                    width: 28px; 
-                    height: 28px; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    font-size: 16px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                    opacity: 0.9;
-                ">${avatar}</div>`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 16],
-                popupAnchor: [0, -18]
-            });
+            let icon;
+
+            if (overlapInfo.isOverlap) {
+                // Leader Line Icon
+                const rad = overlapInfo.angle * (Math.PI / 180);
+                const lineLen = overlapInfo.dist;
+                // Avatar 相對位移 (CSS transform)
+                const dx = Math.sin(rad) * lineLen; // 簡化：直接用 CSS rotate 比較容易
+
+                // 我們用一個旋轉的 container 裝線，然後 avatar 轉回來
+                const rotateDeg = overlapInfo.angle; // e.g. -45
+
+                icon = L.divIcon({
+                    className: 'leader-line-marker',
+                    html: `
+                        <div class="leader-dot" style="background-color: #10B981;"></div>
+                        <div class="leader-line" style="
+                            height: ${lineLen}px; 
+                            transform: rotate(${rotateDeg + 180}deg); /* 線往下指到點 */
+                            background-color: #10B981;
+                        "></div>
+                        <div class="leader-avatar" style="
+                            transform: translate(-50%, -50%) rotate(${rotateDeg}deg) translate(0, -${lineLen}px) rotate(${-rotateDeg}deg);
+                            /* 這邊算數學太複雜，改用絕對定位方式 */
+                        "></div>
+                        
+                        <!-- 簡化版 Leader Line HTML -->
+                        <div style="position:absolute; top:0; left:0;">
+                             <!-- 點 -->
+                             <div style="
+                                position:absolute; left:-5px; top:-5px; width:10px; height:10px; 
+                                border-radius:50%; background:#10B981; border:2px solid white; box-shadow:0 1px 3px rgba(0,0,0,0.3);
+                             "></div>
+                             
+                             <!-- 線 (用 SVG 畫比較準) -->
+                             <svg width="100" height="100" style="position:absolute; left:0; top:0; overflow:visible; pointer-events:none; z-index:-1;">
+                                <line x1="0" y1="0" x2="${Math.sin(rad) * lineLen}" y2="${-Math.cos(rad) * lineLen}" 
+                                      stroke="#10B981" stroke-width="2" />
+                             </svg>
+                             
+                             <!-- 頭像 -->
+                             <div style="
+                                position: absolute;
+                                left: ${Math.sin(rad) * lineLen}px;
+                                top: ${-Math.cos(rad) * lineLen}px;
+                                transform: translate(-50%, -50%);
+                                background: white; 
+                                border: 2px solid #10B981; 
+                                border-radius: 50%; 
+                                width: 32px; height: 32px; 
+                                display: flex; align-items: center; justify-content: center;
+                                font-size: 18px;
+                                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                             ">${avatar}</div>
+                        </div>
+                    `,
+                    iconSize: [0, 0], // 不佔空間，靠 absolute 定位
+                    iconAnchor: [0, 0], // 錨點在中心 (那個點)
+                    popupAnchor: [Math.sin(rad) * lineLen, -Math.cos(rad) * lineLen - 20]
+                });
+
+            } else {
+                // Normal Icon (無重疊)
+                icon = L.divIcon({
+                    className: 'other-user-marker',
+                    html: `<div style="
+                        background: white; 
+                        border: 2px solid #10B981; 
+                        border-radius: 50%; 
+                        width: 28px; 
+                        height: 28px; 
+                        display: flex; 
+                        align-items: center; 
+                        justify-content: center; 
+                        font-size: 16px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                        opacity: 0.9;
+                    ">${avatar}</div>`,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16],
+                    popupAnchor: [0, -18]
+                });
+            }
 
             if (otherUserMarkers[uid]) {
-                otherUserMarkers[uid].setLatLng([finalLat, finalLng]);
+                otherUserMarkers[uid].setLatLng([lat, lng]);
+                otherUserMarkers[uid].setIcon(icon); // Update icon in case overlap state changed
                 otherUserMarkers[uid].setPopupContent(`${name} (${timeStr}在這裡)`);
             } else {
-                const marker = L.marker([finalLat, finalLng], { icon: icon }).addTo(osmMap);
+                const marker = L.marker([lat, lng], { icon: icon }).addTo(osmMap);
                 marker.bindPopup(`${name} (${timeStr}在這裡)`);
 
                 // [新增] 長按導航功能 (800ms 或 右鍵/長按事件)
@@ -13285,20 +13357,83 @@
     }
 
     .custom-avatar-marker {
-        animation: breathing 2s infinite;
-        z-index: 1000 !important;
+        position: relative;
         border-radius: 50%;
-        /* Force circular */
     }
 
-    /* [新增] 大地圖樣式 */
+    /* [修正] 使用偽元素製作同心圓擴散特效 */
+    .custom-avatar-marker::after {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: -4px;
+        right: -4px;
+        bottom: -4px;
+        border-radius: 50%;
+        border: 2px solid rgba(90, 146, 232, 0.8);
+        animation: ripple 2s infinite ease-out;
+        z-index: -1;
+        opacity: 0;
+    }
+
+    @keyframes ripple {
+        0% {
+            transform: scale(1);
+            opacity: 0.8;
+        }
+
+        100% {
+            transform: scale(1.6);
+            opacity: 0;
+        }
+    }
+
+    /* Leader Line Marker Styles */
+    .leader-line-marker {
+        position: relative;
+        /* No pointer events on container to let click pass through if needed, 
+           but usually we want the avatar to be clickable */
+    }
+
+    .leader-dot {
+        width: 12px;
+        height: 12px;
+        background-color: #10B981;
+        /* Default Partner Color */
+        border: 2px solid white;
+        border-radius: 50%;
+        position: absolute;
+        top: -6px;
+        left: -6px;
+        /* Center aligned */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        z-index: 10;
+    }
+
+    .leader-line {
+        position: absolute;
+        width: 2px;
+        background-color: #10B981;
+        top: 0;
+        left: 0;
+        transform-origin: top center;
+        z-index: 5;
+    }
+
+    .leader-avatar {
+        position: absolute;
+        /* transform will assume top-left origin */
+    }
+
+    /* [新增] 大地圖樣式 (z-index 提高) */
     .map-expanded {
         position: fixed !important;
         top: 0;
         left: 0;
         width: 100vw !important;
         height: 100vh !important;
-        z-index: 9999;
+        z-index: 99999 !important;
+        /* 最高層級 */
         border-radius: 0 !important;
     }
 
@@ -13307,20 +13442,23 @@
         position: fixed;
         top: 20px;
         right: 20px;
-        width: 40px;
-        height: 40px;
-        background: rgba(0, 0, 0, 0.6);
+        width: 44px;
+        height: 44px;
+        background: rgba(0, 0, 0, 0.7);
         color: white;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
+        font-size: 28px;
         cursor: pointer;
-        z-index: 10000;
+        z-index: 100000 !important;
+        /* 比地圖更高 */
         backdrop-filter: blur(4px);
         display: none;
         /* Default hidden */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     .map-expanded+.map-close-btn,
