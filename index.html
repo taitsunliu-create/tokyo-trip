@@ -12609,6 +12609,37 @@
                         }
                     }
 
+                    // [Debug Mode] Inject Fake Partner if ?debug=true
+                    const isDebug = new URLSearchParams(window.location.search).has('debug');
+                    if (isDebug && osmMarker) {
+                        const myPos = osmMarker.getLatLng();
+                        // 在旁邊一點點 (約 2-3 公尺)
+                        const fakeLat = myPos.lat + 0.00002;
+                        const fakeLng = myPos.lng + 0.00002;
+
+                        renderOtherUserMarker({
+                            id: 'fake_partner_001',
+                            lat: fakeLat,
+                            lon: fakeLng,
+                            time: Date.now(),
+                            user: {
+                                name: '測試夥伴',
+                                avatar: '🐷'
+                            }
+                        });
+                        renderOtherUserMarker({
+                            id: 'fake_partner_002',
+                            lat: myPos.lat - 0.00002,
+                            lon: myPos.lng - 0.00002,
+                            time: Date.now(),
+                            user: {
+                                name: '測試夥伴2',
+                                avatar: '🐯'
+                            }
+                        });
+                        console.log("[Map] Debug mode: Fake partner injected.");
+                    }
+
                 }).catch(e => console.error("[Location] Fetch failed:", e));
         };
 
@@ -12809,6 +12840,19 @@
                 mapContainer.appendChild(closeBtn);
             }
 
+            // [新增] 插入展開按鈕
+            if (!document.getElementById('map-expand-btn')) {
+                const expandBtn = document.createElement('div');
+                expandBtn.id = 'map-expand-btn';
+                expandBtn.className = 'map-expand-btn';
+                expandBtn.innerHTML = '⤢'; // Unicode expand arrow
+                expandBtn.onclick = function (e) {
+                    e.stopPropagation();
+                    toggleMapExpand();
+                };
+                mapContainer.appendChild(expandBtn);
+            }
+
             // 預設視野：東京車站
             // 預設視野：東京車站
             let startLat = 35.6812;
@@ -12832,9 +12876,25 @@
                 // 初始化地圖 (關閉預設雙擊縮放，改為雙擊放大視野)
                 osmMap = L.map('ai-osm-map', { doubleClickZoom: false }).setView([startLat, startLng], startZoom);
 
-                // [新增] 雙擊切換大地圖
-                // [新增] 雙擊切換大地圖
+                // [新增] 雙擊切換大地圖 (PC / Android)
                 osmMap.on('dblclick', function () {
+                    toggleMapExpand();
+                });
+
+                // [新增] iOS Touch Double Tap Logic
+                let lastTap = 0;
+                osmMap.getContainer().addEventListener('touchend', (e) => {
+                    const currentTime = new Date().getTime();
+                    const tapLength = currentTime - lastTap;
+                    if (tapLength < 300 && tapLength > 0) {
+                        toggleMapExpand();
+                        e.preventDefault(); // Prevent zoom
+                    }
+                    lastTap = currentTime;
+                });
+
+                // 全域切換函式
+                window.toggleMapExpand = function () {
                     const mapEl = document.getElementById('ai-osm-map');
                     const closeBtn = document.getElementById('map-close-btn');
 
@@ -12846,8 +12906,8 @@
                         if (closeBtn) closeBtn.style.display = 'none';
                     }
 
-                    setTimeout(() => { osmMap.invalidateSize(); }, 300); // 重繪地圖以適應新尺寸
-                });
+                    setTimeout(() => { osmMap.invalidateSize(); }, 300);
+                }
 
                 // 加入 OpenStreetMap 圖層
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -13359,32 +13419,40 @@
     .custom-avatar-marker {
         position: relative;
         border-radius: 50%;
+        display: flex !important;
+        /* Force flex centering */
+        justify-content: center;
+        align-items: center;
+        background: transparent;
     }
 
-    /* [修正] 使用偽元素製作同心圓擴散特效 */
+    /* [修正] 使用偽元素製作同心圓擴散特效 (Absolute Center) */
     .custom-avatar-marker::after {
         content: '';
         position: absolute;
-        top: -4px;
-        left: -4px;
-        right: -4px;
-        bottom: -4px;
+        width: 100%;
+        height: 100%;
         border-radius: 50%;
-        border: 2px solid rgba(90, 146, 232, 0.8);
+        border: 2px solid rgba(37, 99, 235, 0.6);
+        /* Blue-500 */
+        box-shadow: 0 0 4px rgba(37, 99, 235, 0.4);
         animation: ripple 2s infinite ease-out;
         z-index: -1;
         opacity: 0;
+        transform-origin: center center;
     }
 
     @keyframes ripple {
         0% {
             transform: scale(1);
             opacity: 0.8;
+            border-width: 2px;
         }
 
         100% {
             transform: scale(1.6);
             opacity: 0;
+            border-width: 0px;
         }
     }
 
@@ -13459,6 +13527,32 @@
         /* Default hidden */
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* [新增] 大地圖展開按鈕 (顯示在地圖角落) */
+    .map-expand-btn {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        background: white;
+        color: #374151;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        cursor: pointer;
+        z-index: 900;
+        /* Leaflet constrols are around 1000 usually, put below custom User marker but above tiles */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        border: 2px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .map-expanded .map-expand-btn {
+        display: none;
+        /* Hide when expanded */
     }
 
     .map-expanded+.map-close-btn,
