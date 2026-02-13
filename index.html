@@ -13223,6 +13223,13 @@
         }
         closeNavModal();
     }
+
+    // [新增] 點擊背景關閉視窗
+    document.getElementById('nav-confirm-modal').addEventListener('click', function (e) {
+        if (e.target === this) {
+            closeNavModal();
+        }
+    });
 </script>
 
 </html>
