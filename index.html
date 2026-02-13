@@ -12722,6 +12722,21 @@
             const mapContainer = document.getElementById('ai-osm-map');
             if (!mapContainer) return;
 
+            // [新增] 插入關閉按鈕 (如果還沒插入過)
+            if (!document.getElementById('map-close-btn')) {
+                const closeBtn = document.createElement('div');
+                closeBtn.id = 'map-close-btn';
+                closeBtn.className = 'map-close-btn';
+                closeBtn.innerHTML = '×';
+                closeBtn.onclick = function () {
+                    const mapEl = document.getElementById('ai-osm-map');
+                    mapEl.classList.remove('map-expanded');
+                    this.style.display = 'none';
+                    setTimeout(() => { if (osmMap) osmMap.invalidateSize(); }, 300);
+                };
+                mapContainer.appendChild(closeBtn);
+            }
+
             // 預設視野：東京車站
             // 預設視野：東京車站
             let startLat = 35.6812;
@@ -12746,9 +12761,19 @@
                 osmMap = L.map('ai-osm-map', { doubleClickZoom: false }).setView([startLat, startLng], startZoom);
 
                 // [新增] 雙擊切換大地圖
+                // [新增] 雙擊切換大地圖
                 osmMap.on('dblclick', function () {
                     const mapEl = document.getElementById('ai-osm-map');
+                    const closeBtn = document.getElementById('map-close-btn');
+
                     mapEl.classList.toggle('map-expanded');
+
+                    if (mapEl.classList.contains('map-expanded')) {
+                        if (closeBtn) closeBtn.style.display = 'flex';
+                    } else {
+                        if (closeBtn) closeBtn.style.display = 'none';
+                    }
+
                     setTimeout(() => { osmMap.invalidateSize(); }, 300); // 重繪地圖以適應新尺寸
                 });
 
@@ -13262,6 +13287,8 @@
     .custom-avatar-marker {
         animation: breathing 2s infinite;
         z-index: 1000 !important;
+        border-radius: 50%;
+        /* Force circular */
     }
 
     /* [新增] 大地圖樣式 */
@@ -13273,6 +13300,33 @@
         height: 100vh !important;
         z-index: 9999;
         border-radius: 0 !important;
+    }
+
+    /* [新增] 大地圖關閉按鈕 */
+    .map-close-btn {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        cursor: pointer;
+        z-index: 10000;
+        backdrop-filter: blur(4px);
+        display: none;
+        /* Default hidden */
+    }
+
+    .map-expanded+.map-close-btn,
+    .map-expanded .map-close-btn {
+        display: flex;
+        /* Show when map is expanded */
     }
 </style>
 
@@ -13291,24 +13345,31 @@
                     border-radius: 8px;
                     font-weight: 500;
                 ">取消</button>
-            <button onclick="confirmNav()" style="
+            <a id="nav-go-btn" target="_blank" onclick="closeNavModal()" style="
                     padding: 10px;
                     border: none;
                     background: #2563EB;
                     color: white;
                     border-radius: 8px;
                     font-weight: 500;
-                ">前往導航</button>
+                    text-decoration: none;
+                    display: inline-block;
+                    line-height: 20px;
+                ">前往導航</a>
         </div>
     </div>
 </div>
 
 <script>
     // [新增] 導航確認視窗功能
-    let currentNavUrl = '';
     function showNavModal(name, lat, lng) {
         document.getElementById('nav-target-name').innerText = name;
-        currentNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+        const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+
+        // 設定連結 href
+        const btn = document.getElementById('nav-go-btn');
+        btn.href = url;
+
         document.getElementById('nav-confirm-modal').style.display = 'flex';
     }
 
@@ -13316,12 +13377,10 @@
         document.getElementById('nav-confirm-modal').style.display = 'none';
     }
 
-    function confirmNav() {
-        if (currentNavUrl) {
-            window.open(currentNavUrl, '_blank');
-        }
-        closeNavModal();
+    function closeNavModal() {
+        document.getElementById('nav-confirm-modal').style.display = 'none';
     }
+    // confirmNav 已移除，改用 <a> 標籤直接導航
 
     // [新增] 點擊背景關閉視窗
     document.getElementById('nav-confirm-modal').addEventListener('click', function (e) {
