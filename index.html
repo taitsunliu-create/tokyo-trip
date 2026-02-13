@@ -12649,12 +12649,14 @@
                 const marker = L.marker([lat, lng], { icon: icon }).addTo(osmMap);
                 marker.bindPopup(`${name} (${timeStr}在這裡)`);
 
-                // [新增] 長按 2 秒導航功能
+                // [新增] 長按導航功能 (800ms 或 右鍵/長按事件)
                 let pressTimer;
                 const startPress = () => {
+                    console.log("[Map] Press start on " + name);
                     pressTimer = setTimeout(() => {
+                        console.log("[Map] Long press triggered");
                         showNavModal(name, lat, lng);
-                    }, 2000);
+                    }, 800);
                 };
                 const cancelPress = () => {
                     if (pressTimer) clearTimeout(pressTimer);
@@ -12664,7 +12666,15 @@
                 marker.on('touchstart', startPress);
                 marker.on('mouseup', cancelPress);
                 marker.on('touchend', cancelPress);
-                marker.on('dragstart', cancelPress); // 地圖移動時取消
+                marker.on('dragstart', cancelPress);
+                marker.on('mouseout', cancelPress); // 移出時取消
+
+                // 支援原生的 Context Menu (右鍵或系統長按)
+                marker.on('contextmenu', (e) => {
+                    if (e && e.originalEvent) e.originalEvent.preventDefault();
+                    cancelPress(); // 清除上面的計時器，避免重複
+                    showNavModal(name, lat, lng);
+                });
 
                 otherUserMarkers[uid] = marker;
             }
